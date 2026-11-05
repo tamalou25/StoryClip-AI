@@ -6,12 +6,12 @@ Rythme : 5–10 h/semaine. Heures = travail humain (pilotage, essais, relecture)
 |---|---|---|---|
 | 1 | Audit et décisions | 4–6 | ✅ fait |
 | 2 | Personnage, caméra, collisions, carte en volumes | 10–16 | ✅ base faite (même session) |
-| 3 | Commandes tactiles/clavier, menus, écrans | 12–20 | 🟡 commandes + pause faites ; menus camp/résultats à faire |
+| 3 | Commandes tactiles/clavier, menus, écrans | 12–20 | ✅ accueil, camp, pause, résultat, revanche, options |
 | 4 | Essai réseau : 2 clients, serveur autoritaire (Colyseus) | 20–30 | ⬜ |
-| 5 | Partie complète 5 min, deux camps, victoire, revanche | 20–30 | ⬜ |
-| 6 | 8 bots, navigation, déblocage | 20–35 | ⬜ |
+| 5 | Partie complète 5 min, deux camps, victoire, revanche | 20–30 | ✅ solo (voir docs/REGLES.md) |
+| 6 | 8 bots, navigation, déblocage | 20–35 | ✅ 10 bots, A*, déblocage, 3 difficultés |
 | 7 | Salons privés, objectifs synchronisés, départs, reconnexion | 20–35 | ⬜ |
-| 8 | Gaz fictif et cordon (contre-jeu, sortie) | 12–20 | ⬜ |
+| 8 | Gaz fictif et cordon (contre-jeu, sortie) | 12–20 | ✅ gaz, cordon, slogan, rassemblement |
 | 9 | Décor parisien, animations, optimisation, tests réels | 30–48 | ⬜ |
 | | **Total** | **150–240** (190–300 avec marge) | |
 
@@ -50,3 +50,8 @@ Menu complet au clavier et au toucher : accueil → choix du camp → partie (mi
 | Appels de dessin mesurés (Chromium headless) | 135 | 598 |
 
 Les i/s ne sont pas mesurables ici (rendu logiciel) : à mesurer sur un vrai téléphone en priorité.
+
+## Partie solo complète (05/11/2026)
+- Incréments 3, 5, 6 et 8 livrés en solo dans la même session (session « gameplay », en parallèle de la session « graphismes »).
+- Validé : Vitest (règles, bots, navigation, parties complètes bots contre bots), build, Playwright (fumée + partie complète pour les deux camps, clavier puis Pixel 7 émulé). Aucun essai sur téléphone réel.
+- Restant : incrément 4 (réseau, Colyseus) puis 7 (salons). Prochaine amélioration la plus utile côté solo : mesurer sur un vrai téléphone (11 personnages articulés ≈ 280–430 appels de dessin en qualité basse) et, si besoin, un niveau de détail réduit pour les bots lointains.

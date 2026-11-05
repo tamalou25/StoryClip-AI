@@ -13,7 +13,8 @@
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:e2e": "node e2e/fumee.mjs"
+    "test:e2e": "node e2e/fumee.mjs && node e2e/partie.mjs",
+    "equilibrage": "EQUILIBRAGE=1 vitest run tests/equilibrage.test.ts"
   },
   "dependencies": {
     "playcanvas": "2.23.3"
