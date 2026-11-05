@@ -49,7 +49,7 @@ async function ordinateur(navigateur) {
   page.on('pageerror', (e) => erreurs.push(e.message));
   page.on('console', (m) => { if (m.type() === 'error') erreurs.push(m.text()); });
   await page.goto(URL_BASSE);
-  await page.waitForFunction(() => window.__pm3d !== undefined);
+  await page.waitForFunction(() => window.__pm3d !== undefined, null, { timeout: 180000 });
   await page.waitForFunction(() => window.__pm3d.etat().fps > 3, null, { timeout: 60000 });
 
   const focus = await page.evaluate(() => document.activeElement?.id);
@@ -132,7 +132,7 @@ async function qualiteHaute(navigateur) {
   page.on('pageerror', (e) => erreurs.push(e.message));
   page.on('console', (m) => { if (m.type() === 'error') erreurs.push(m.text()); });
   await page.goto(`${URL_JEU}&qualite=haute`);
-  await page.waitForFunction(() => window.__pm3d !== undefined);
+  await page.waitForFunction(() => window.__pm3d !== undefined, null, { timeout: 180000 });
   await page.waitForFunction(() => window.__pm3d.etat().fps > 0, null, { timeout: 90000 });
   const e = await etat(page);
   verifier(e.qualite === 'haute', 'qualité haute sélectionnée par paramètre');
@@ -155,7 +155,7 @@ async function mobile(navigateur) {
   const erreurs = [];
   page.on('pageerror', (e) => erreurs.push(e.message));
   await page.goto(URL_JEU);
-  await page.waitForFunction(() => window.__pm3d !== undefined);
+  await page.waitForFunction(() => window.__pm3d !== undefined, null, { timeout: 180000 });
   await page.waitForFunction(() => window.__pm3d.etat().fps > 3, null, { timeout: 60000 });
   verifier((await etat(page)).qualite === 'basse', 'qualité basse par défaut sur écran tactile');
   await page.tap('#bouton-jouer');

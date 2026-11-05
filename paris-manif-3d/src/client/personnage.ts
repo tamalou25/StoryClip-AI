@@ -1,239 +1,198 @@
-// Personnage humain articulé (≈ 1,78 m) et animation procédurale : repos, marche, course, action.
-// - La cadence est liée à la distance parcourue (longueur de foulée) : les pieds glissent peu.
-// - Le bassin descend pour que le pied le plus bas touche le sol (IK simple à deux segments).
-// - Les transitions sont des mélanges continus pilotés par la vitesse lissée.
+// Personnages animés : modèles Quaternius « Ultimate Modular Men » (CC0, voir docs/LICENCES.md).
+// - Locomotion : mélange 1D Repos → Marche → Course piloté par la vitesse de la simulation.
+// - Cadence calée sur les vitesses naturelles des animations (mesurées par cinématique directe sur
+//   le pied d'appui : marche 1,26 m/s, course 2,84 m/s) : les pieds glissent peu.
+// - Action : couche « haut du corps » (masque à partir de l'abdomen) jouant « Wave », mélangée en douceur.
 
 import * as pc from 'playcanvas';
 import { borner, lissage } from '../sim/math';
 import { ombreContact, texture } from './textures';
 
-const CUISSE = 0.45;
-const TIBIA = 0.43;
-const CHEVILLE = 0.075;
-const HANCHE_LARGEUR = 0.1;
-const BRAS = 0.29;
-const AVANT_BRAS = 0.27;
+/** Vitesses naturelles (m/s) des animations du pack, mesurées hors ligne. */
+export const VITESSE_ANIM_MARCHE = 1.26;
+export const VITESSE_ANIM_COURSE = 2.84;
+/** Longueur d'un pas (m) : vitesse × durée du cycle / 2. */
+const PAS_MARCHE = (1.333 * VITESSE_ANIM_MARCHE) / 2;
+const PAS_COURSE = (0.8 * VITESSE_ANIM_COURSE) / 2;
 const DEG = 180 / Math.PI;
 
-export interface Tenue {
-  veste: string;
-  pantalon: string;
-  chaussures: string;
-  peau: string;
-  cheveux: string;
+export type EvenementPas = (intensite: number) => void;
+
+function piste(conteneur: pc.ContainerResource, nom: string): pc.AnimTrack {
+  const a = conteneur.animations.find((x) => (x.resource as pc.AnimTrack).name === nom);
+  if (!a) throw new Error(`Animation absente du modèle : ${nom}`);
+  return a.resource as pc.AnimTrack;
 }
 
-export const TENUE_MANIFESTANT: Tenue = { veste: '#5d6b4a', pantalon: '#34435c', chaussures: '#d8d4cb', peau: '#c79470', cheveux: '#2b211a' };
+/** Remplace les couleurs de certains matériaux (copie locale : les autres instances ne changent pas). */
+function teindre(modele: pc.Entity, teintes: Record<string, string>, gloss: number): void {
+  const copies = new Map<pc.Material, pc.StandardMaterial>();
+  for (const r of modele.findComponents('render') as pc.RenderComponent[]) {
+    r.castShadows = true;
+    for (const mi of r.meshInstances) {
+      const origine = mi.material as pc.StandardMaterial;
+      let copie = copies.get(origine);
+      if (!copie) {
+        copie = origine.clone();
+        const hex = teintes[origine.name];
+        if (hex) copie.diffuse = new pc.Color().fromString(hex);
+        // Tissus et peau mats : le pack est réglé assez brillant pour un rendu « jouet ».
+        if (origine.name !== 'Eye') copie.gloss = Math.min(copie.gloss, gloss);
+        copie.metalness = 0;
+        copie.update();
+        copies.set(origine, copie);
+      }
+      mi.material = copie;
+    }
+  }
+}
 
-function mat(hex: string, gloss: number, metal = 0): pc.StandardMaterial {
+/** Chemin d'un os depuis l'entité porteuse de l'animation (format des masques PlayCanvas). */
+function chemin(depuis: pc.Entity, os: pc.GraphNode): string {
+  const noms: string[] = [];
+  let n: pc.GraphNode | null = os;
+  while (n && n !== depuis) {
+    noms.unshift(n.name);
+    n = n.parent;
+  }
+  return noms.join('/');
+}
+
+function ombre(app: pc.Application): pc.Entity {
   const m = new pc.StandardMaterial();
-  m.useMetalness = true;
-  m.diffuse = new pc.Color().fromString(hex);
-  m.gloss = gloss;
-  m.metalness = metal;
+  m.diffuse = new pc.Color(0, 0, 0);
+  m.opacityMap = texture(app.graphicsDevice, ombreContact(), false, 1, false);
+  m.opacityMapChannel = 'a';
+  m.blendType = pc.BLEND_NORMAL;
+  m.depthWrite = false;
+  m.useLighting = false;
   m.update();
-  return m;
-}
-
-function piece(parent: pc.Entity, type: 'capsule' | 'sphere' | 'box' | 'cylinder', m: pc.Material, pos: [number, number, number], echelle: [number, number, number], ombre: boolean, rot: [number, number, number] = [0, 0, 0]): pc.Entity {
-  const e = new pc.Entity(type);
-  e.addComponent('render', { type, material: m, castShadows: ombre, receiveShadows: true });
-  e.setLocalPosition(...pos);
-  // La capsule PlayCanvas mesure 2 m de haut : on exprime toutes les longueurs en mètres.
-  e.setLocalScale(echelle[0], type === 'capsule' ? echelle[1] / 2 : echelle[1], echelle[2]);
-  e.setLocalEulerAngles(...rot);
-  parent.addChild(e);
+  const e = new pc.Entity('ombreContact');
+  e.addComponent('render', { type: 'plane', material: m, castShadows: false, receiveShadows: false });
+  e.setLocalScale(1.0, 1, 1.0);
+  e.setLocalPosition(0, 0.012, 0);
   return e;
 }
-
-function pivot(parent: pc.Entity, nom: string, pos: [number, number, number]): pc.Entity {
-  const e = new pc.Entity(nom);
-  e.setLocalPosition(...pos);
-  parent.addChild(e);
-  return e;
-}
-
-interface Jambe { hanche: pc.Entity; genou: pc.Entity; cheville: pc.Entity }
-interface Bras { epaule: pc.Entity; coude: pc.Entity }
-
-export type EvenementPas = (cote: 'gauche' | 'droite', intensite: number) => void;
 
 export class Personnage3D {
   readonly racine: pc.Entity;
-  private readonly bassin: pc.Entity;
-  private readonly buste: pc.Entity;
-  private readonly tete: pc.Entity;
-  private readonly jambes: [Jambe, Jambe];
-  private readonly bras: [Bras, Bras];
-  private readonly ombre: pc.Entity;
-
-  private phase = 0;
+  private readonly modele: pc.Entity;
+  private readonly coucheAction: pc.AnimComponentLayer;
   private vitesseLissee = 0;
   private actionPoids = 0;
-  private temps = 0;
   private capPrecedent = 0;
   private inclinaison = 0;
-  private penche = 0;
-  private dernierePhasePas = 0;
+  private distancePas = 0;
   onPas: EvenementPas | null = null;
 
-  constructor(app: pc.Application, tenue: Tenue, ombres: boolean) {
-    const veste = mat(tenue.veste, 0.22);
-    const pantalon = mat(tenue.pantalon, 0.18);
-    const chaussure = mat(tenue.chaussures, 0.35);
-    const semelle = mat('#3a3a3a', 0.2);
-    const peau = mat(tenue.peau, 0.38);
-    const cheveux = mat(tenue.cheveux, 0.3);
-
+  constructor(app: pc.Application, conteneur: pc.ContainerResource, teintes: Record<string, string>) {
     this.racine = new pc.Entity('personnage');
     app.root.addChild(this.racine);
+    this.racine.addChild(ombre(app));
 
-    // Ombre de contact (toujours présente, même sans ombres portées).
-    const om = new pc.StandardMaterial();
-    om.diffuse = new pc.Color(0, 0, 0);
-    om.opacityMap = texture(app.graphicsDevice, ombreContact(), false, 1, false);
-    om.opacityMapChannel = 'a';
-    om.blendType = pc.BLEND_NORMAL;
-    om.depthWrite = false;
-    om.useLighting = false;
-    om.update();
-    this.ombre = new pc.Entity('ombreContact');
-    this.ombre.addComponent('render', { type: 'plane', material: om, castShadows: false, receiveShadows: false });
-    this.ombre.setLocalScale(1.1, 1, 1.1);
-    this.ombre.setLocalPosition(0, 0.012, 0);
-    this.racine.addChild(this.ombre);
+    // Pivot pour ne pas écraser la transformation du nœud racine du GLB.
+    this.modele = new pc.Entity('modele');
+    this.modele.addChild(conteneur.instantiateRenderEntity());
+    this.modele.setLocalEulerAngles(0, 180, 0); // le modèle regarde vers +z ; le jeu, vers −z
+    this.racine.addChild(this.modele);
+    teindre(this.modele, teintes, 0.3);
 
-    this.bassin = pivot(this.racine, 'bassin', [0, CUISSE + TIBIA + CHEVILLE, 0]);
-    piece(this.bassin, 'capsule', pantalon, [0, 0.0, 0], [0.24, 0.36, 0.22], ombres, [0, 0, 90]);
+    this.modele.addComponent('anim', { activate: true });
+    const anim = this.modele.anim!;
+    anim.loadStateGraph({
+      layers: [
+        {
+          name: 'Base',
+          states: [
+            { name: 'START' },
+            {
+              name: 'Locomotion',
+              speed: 1,
+              loop: true,
+              blendTree: {
+                type: pc.ANIM_BLEND_1D,
+                parameter: 'vitesse',
+                syncAnimations: true,
+                children: [
+                  { name: 'Repos', point: 0 },
+                  { name: 'Marche', point: VITESSE_ANIM_MARCHE },
+                  { name: 'Course', point: VITESSE_ANIM_COURSE },
+                ],
+              },
+            },
+          ],
+          transitions: [{ from: 'START', to: 'Locomotion' }],
+        },
+        {
+          name: 'Action',
+          blendType: pc.ANIM_LAYER_OVERWRITE,
+          states: [{ name: 'START' }, { name: 'Salut', speed: 1, loop: true }],
+          transitions: [{ from: 'START', to: 'Salut' }],
+        },
+      ],
+      parameters: { vitesse: { name: 'vitesse', type: pc.ANIM_PARAMETER_FLOAT, value: 0 } },
+    });
+    anim.assignAnimation('Locomotion.Repos', piste(conteneur, 'Idle'), 'Base');
+    anim.assignAnimation('Locomotion.Marche', piste(conteneur, 'Walk'), 'Base');
+    anim.assignAnimation('Locomotion.Course', piste(conteneur, 'Run'), 'Base');
+    anim.assignAnimation('Salut', piste(conteneur, 'Wave'), 'Action');
 
-    // Jambes.
-    const jambe = (cote: number): Jambe => {
-      const hanche = pivot(this.bassin, 'hanche', [cote * HANCHE_LARGEUR, -0.02, 0]);
-      piece(hanche, 'capsule', pantalon, [0, -CUISSE / 2, 0], [0.17, CUISSE + 0.1, 0.18], ombres);
-      const genou = pivot(hanche, 'genou', [0, -CUISSE, 0]);
-      piece(genou, 'capsule', pantalon, [0, -TIBIA / 2, 0], [0.13, TIBIA + 0.08, 0.14], ombres);
-      const cheville = pivot(genou, 'cheville', [0, -TIBIA, 0]);
-      piece(cheville, 'box', chaussure, [0, -0.035, -0.05], [0.11, 0.08, 0.27], ombres);
-      piece(cheville, 'box', semelle, [0, -0.07, -0.05], [0.115, 0.02, 0.28], false);
-      return { hanche, genou, cheville };
-    };
-    this.jambes = [jambe(-1), jambe(1)];
-
-    // Buste : veste, épaules, cou, tête.
-    this.buste = pivot(this.bassin, 'buste', [0, 0.08, 0]);
-    piece(this.buste, 'capsule', veste, [0, 0.25, 0], [0.37, 0.6, 0.23], ombres);
-    piece(this.buste, 'box', veste, [0, 0.0, 0.0], [0.33, 0.14, 0.21], false); // bas de veste
-    piece(this.buste, 'capsule', veste, [0, 0.46, 0], [0.19, 0.5, 0.21], ombres, [0, 0, 90]);
-    piece(this.buste, 'cylinder', veste, [0, 0.58, 0.01], [0.16, 0.08, 0.16], false); // col
-    piece(this.buste, 'cylinder', peau, [0, 0.63, 0], [0.1, 0.1, 0.1], false);
-    this.tete = pivot(this.buste, 'tete', [0, 0.68, 0]);
-    piece(this.tete, 'sphere', peau, [0, 0.11, 0], [0.19, 0.24, 0.21], ombres);
-    piece(this.tete, 'sphere', peau, [0, 0.06, -0.075], [0.07, 0.07, 0.07], false); // nez/menton
-    piece(this.tete, 'sphere', cheveux, [0, 0.16, 0.015], [0.205, 0.19, 0.215], ombres);
-    piece(this.tete, 'sphere', peau, [-0.097, 0.11, 0.01], [0.035, 0.06, 0.04], false);
-    piece(this.tete, 'sphere', peau, [0.097, 0.11, 0.01], [0.035, 0.06, 0.04], false);
-
-    // Bras.
-    const bras = (cote: number): Bras => {
-      const epaule = pivot(this.buste, 'epaule', [cote * 0.22, 0.5, 0]);
-      piece(epaule, 'capsule', veste, [0, -BRAS / 2, 0], [0.12, BRAS + 0.09, 0.12], ombres);
-      const coude = pivot(epaule, 'coude', [0, -BRAS, 0]);
-      piece(coude, 'capsule', veste, [0, -AVANT_BRAS / 2, 0], [0.1, AVANT_BRAS + 0.06, 0.1], ombres);
-      piece(coude, 'sphere', peau, [0, -AVANT_BRAS - 0.05, 0], [0.08, 0.1, 0.06], false);
-      return { epaule, coude };
-    };
-    this.bras = [bras(-1), bras(1)];
+    this.coucheAction = anim.findAnimationLayer('Action');
+    const abdomen = this.modele.findByName('Abdomen');
+    if (abdomen) this.coucheAction.mask = { [chemin(this.modele, abdomen)]: { children: true } };
+    this.coucheAction.weight = 0;
   }
 
-  /**
-   * Met à jour la pose. vitesse en m/s (vitesse réelle de la simulation), cap en radians.
-   * dt = durée de l'image (rendu), pas un pas de simulation.
-   */
+  /** Pose et animation. vitesse en m/s (simulation), cap en radians, dt = durée de l'image. */
   majPose(x: number, z: number, cap: number, vitesse: number, action: boolean, dt: number): void {
-    this.temps += dt;
     this.racine.setPosition(x, 0.14, z);
     this.racine.setEulerAngles(0, cap * DEG, 0);
 
-    this.vitesseLissee += (vitesse - this.vitesseLissee) * lissage(10, dt);
-    const v = this.vitesseLissee;
-    this.actionPoids += ((action ? 1 : 0) - this.actionPoids) * lissage(9, dt);
+    this.vitesseLissee += (vitesse - this.vitesseLissee) * lissage(12, dt);
+    const v = this.vitesseLissee < 0.05 ? 0 : this.vitesseLissee;
+    const anim = this.modele.anim!;
+    anim.setFloat('vitesse', Math.min(v, VITESSE_ANIM_COURSE));
+    // Cadence : ralentie en marche lente, accélérée au-delà de la course naturelle.
+    anim.speed = v > VITESSE_ANIM_COURSE ? v / VITESSE_ANIM_COURSE : v > 0.15 && v < VITESSE_ANIM_MARCHE ? Math.max(0.7, v / VITESSE_ANIM_MARCHE) : 1;
 
-    // Mélange repos → marche → course.
-    const enMouvement = borner((v - 0.15) / 0.6, 0, 1);
-    const course = borner((v - 2.6) / 2.2, 0, 1);
-    // Longueur d'un cycle complet (deux pas) en mètres : la cadence suit la distance parcourue.
-    const cycle = 1.35 + course * 1.15 + borner(v / 6, 0, 1) * 0.2;
-    const dPhase = (v / cycle) * Math.PI * 2 * dt;
-    this.phase = (this.phase + dPhase) % (Math.PI * 2);
-    if (enMouvement < 0.05) this.phase += (0 - Math.sin(this.phase)) * lissage(4, dt) * 0.5; // revient au neutre
+    this.actionPoids += ((action ? 1 : 0) - this.actionPoids) * lissage(8, dt);
+    this.coucheAction.weight = this.actionPoids;
 
-    // Événements de pas : à chaque passage de la phase par 0 et π (pose du talon).
-    const demi = Math.floor(this.phase / Math.PI);
-    if (demi !== this.dernierePhasePas && enMouvement > 0.3) {
-      this.onPas?.(demi === 0 ? 'gauche' : 'droite', 0.4 + course * 0.6);
-    }
-    this.dernierePhasePas = demi;
-
-    // Inclinaison du buste vers l'avant (vitesse) et sur le côté dans les virages.
-    const vitesseRotation = ((((cap - this.capPrecedent + Math.PI * 3) % (Math.PI * 2)) - Math.PI) / Math.max(dt, 1e-4));
+    // Légère inclinaison dans les virages (le corps se penche vers l'intérieur).
+    const vitesseRotation = (((cap - this.capPrecedent + Math.PI * 3) % (Math.PI * 2)) - Math.PI) / Math.max(dt, 1e-4);
     this.capPrecedent = cap;
-    this.inclinaison += (borner(-vitesseRotation * v * 0.6, -14, 14) - this.inclinaison) * lissage(6, dt);
-    this.penche += ((4 * enMouvement + 10 * course) - this.penche) * lissage(5, dt);
+    this.inclinaison += (borner(-vitesseRotation * v * 0.5, -10, 10) - this.inclinaison) * lissage(6, dt);
+    this.modele.setLocalEulerAngles(0, 180, -this.inclinaison);
 
-    const amplitudeHanche = (24 + 22 * course) * enMouvement;
-    const flexionGenou = (38 + 52 * course) * enMouvement;
-    const angles: [number, number][] = [];
-    for (let i = 0; i < 2; i++) {
-      const p = this.phase + i * Math.PI;
-      const hanche = Math.sin(p) * amplitudeHanche + course * 8 * enMouvement; // en degrés, + = vers l'avant
-      // Le genou plie surtout pendant le retour de la jambe (phase de suspension).
-      const genou = (Math.max(0, Math.sin(p - 1.4)) * flexionGenou + 6 * enMouvement + 3) * -1;
-      angles.push([hanche, genou]);
-      const j = this.jambes[i]!;
-      j.hanche.setLocalEulerAngles(hanche, 0, 0);
-      j.genou.setLocalEulerAngles(genou, 0, 0);
-      // Pied à plat sur le sol au contact, pointe relevée en fin de retour.
-      const pied = -(hanche + genou) + Math.max(0, Math.cos(p)) * 12 * enMouvement;
-      j.cheville.setLocalEulerAngles(pied, 0, 0);
-    }
-
-    // IK simple : hauteur du bassin = jambe la plus « longue » verticalement (le pied d'appui touche le sol).
-    let hBassin = 0;
-    for (const [h, g] of angles) {
-      const t = h / DEG;
-      const s = (h + g) / DEG;
-      hBassin = Math.max(hBassin, CUISSE * Math.cos(t) + TIBIA * Math.cos(s) + CHEVILLE);
-    }
-    const respiration = Math.sin(this.temps * 1.6) * 0.006 * (1 - enMouvement);
-    const envol = course * Math.max(0, Math.sin(this.phase * 2)) * 0.05; // phase de suspension en course
-    this.bassin.setLocalPosition(Math.sin(this.phase) * 0.02 * enMouvement, hBassin + respiration + envol, 0);
-    this.bassin.setLocalEulerAngles(0, Math.sin(this.phase) * 7 * enMouvement, this.inclinaison * 0.4);
-
-    // Buste : contre-rotation des épaules, penché en avant, balancement au repos.
-    const balancementRepos = Math.sin(this.temps * 0.7) * 1.5 * (1 - enMouvement);
-    this.buste.setLocalEulerAngles(-this.penche, -Math.sin(this.phase) * 12 * enMouvement, this.inclinaison * 0.6 + balancementRepos);
-    this.tete.setLocalEulerAngles(this.penche * 0.6, Math.sin(this.temps * 0.4) * 6 * (1 - enMouvement), 0);
-
-    // Bras : opposés aux jambes, coudes pliés davantage en course ; action = bras droit levé, poing fermé.
-    for (let i = 0; i < 2; i++) {
-      const b = this.bras[i]!;
-      const p = this.phase + i * Math.PI + Math.PI;
-      const balancier = Math.sin(p) * (18 + 30 * course) * enMouvement;
-      let epaule = balancier + 4;
-      let coude = 10 + 15 * enMouvement + 65 * course + Math.max(0, Math.sin(p)) * 20 * course;
-      let ecart = (i === 0 ? -1 : 1) * (6 + 3 * (1 - enMouvement));
-      if (i === 1) {
-        const a = this.actionPoids;
-        epaule = epaule * (1 - a) + (165 + Math.sin(this.temps * 9) * 6) * a;
-        coude = coude * (1 - a) + 15 * a;
-        ecart = ecart * (1 - a) + 12 * a;
+    // Bruits de pas : un pas tous les ~0,84 m en marche, ~1,14 m en course.
+    if (v > 0.3) {
+      const mel = borner((v - VITESSE_ANIM_MARCHE) / (VITESSE_ANIM_COURSE - VITESSE_ANIM_MARCHE), 0, 1);
+      const pas = PAS_MARCHE + (PAS_COURSE - PAS_MARCHE) * mel;
+      this.distancePas += v * dt;
+      if (this.distancePas >= pas) {
+        this.distancePas -= pas;
+        this.onPas?.(0.35 + mel * 0.65);
       }
-      b.epaule.setLocalEulerAngles(epaule, 0, ecart);
-      b.coude.setLocalEulerAngles(coude, 0, 0);
+    } else {
+      this.distancePas = 0;
     }
-
-    // L'ombre de contact rétrécit légèrement quand le corps s'élève.
-    const s = 1.1 - envol * 2;
-    this.ombre.setLocalScale(s, 1, s * 1.05);
   }
+}
+
+/** Passant immobile (animation de repos), pour donner de la vie à la place. */
+export function passant(app: pc.Application, conteneur: pc.ContainerResource, x: number, z: number, regard: number, teintes: Record<string, string>, decalage: number): pc.Entity {
+  const racine = new pc.Entity('passant');
+  racine.setPosition(x, 0.14, z);
+  racine.setEulerAngles(0, regard * DEG, 0);
+  racine.addChild(ombre(app));
+  const modele = new pc.Entity('modele');
+  modele.addChild(conteneur.instantiateRenderEntity());
+  modele.setLocalEulerAngles(0, 180, 0);
+  racine.addChild(modele);
+  teindre(modele, teintes, 0.3);
+  modele.addComponent('anim', { activate: true, speed: 0.9 + decalage * 0.2 });
+  modele.anim!.assignAnimation('Repos', piste(conteneur, decalage > 0.5 ? 'Idle_Neutral' : 'Idle'));
+  modele.anim!.baseLayer!.activeStateCurrentTime = decalage * 1.6; // désynchronise les passants
+  app.root.addChild(racine);
+  return racine;
 }

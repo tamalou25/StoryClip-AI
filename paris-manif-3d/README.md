@@ -2,7 +2,7 @@
 
 Jeu web 3D stylisé : manifestants contre forces de l'ordre, parties de 5 min sur une place compacte inspirée de la place de la République. Mobile (Android, iPhone) et ordinateur.
 
-**État : incrément 2 (visuel)** — place haussmannienne texturée (dalles, façades, toits à la Mansart, monument, platanes, mobilier), personnage humain animé (repos, marche, course, action), caméra par-dessus l'épaule anti-collision, ambiance sonore synthétisée, menu soigné. Qualités basse/haute réellement différenciées. Pas encore de camps, de bots, d'objectifs ni de réseau.
+**État : incrément 2b (ressources réelles)** — place haussmannienne avec textures photographiques PBR (Poly Haven), candélabres, bancs et statue en modèles 3D réels, platanes en feuillage réel (ambientCG), ciel HDRI qui éclaire la scène, personnage humain animé (Quaternius : repos, marche, course, salut) et passants. Toutes les ressources sont stockées dans `public/ressources/` (aucun lien externe au lancement) et sont CC0 — voir `docs/LICENCES.md`. Pas encore de camps, de bots, d'objectifs ni de réseau.
 
 ## Lancer
 
@@ -12,6 +12,12 @@ npm run dev        # http://localhost:5173 (ajouter ?qualite=haute|basse, ?test=
 npm test           # Vitest : simulation, collisions, caméra, validation des intentions
 npm run build      # vérification TypeScript + build de production dans dist/
 npm run test:e2e   # fumée Playwright (après build) : clavier seul + émulation mobile multitouch
+```
+
+Ressources tierces (déjà versionnées ; à relancer seulement pour les régénérer) :
+```bash
+node scripts/assets/telecharger.mjs   # sources brutes → assets-sources/ (non versionné)
+node scripts/assets/preparer.mjs      # versions optimisées → public/ressources/
 ```
 
 Node ≥ 22.12. `.npmrc` contient `legacy-peer-deps=true` (contournement d'un plantage de npm 10.9 sur les pairs optionnels de Vitest, voir `docs/adr/0001-pile-technique.md`).
@@ -24,7 +30,7 @@ Node ≥ 22.12. `.npmrc` contient `legacy-peer-deps=true` (contournement d'un pl
 | Marcher | Maj + direction | Pousser peu le joystick |
 | Caméra manuelle (facultatif) | A / E (AZERTY) = Q / E (QWERTY) | Glisser dans la moitié droite |
 | Recentrer la caméra | C | Bouton « Recentrer » |
-| Action (test : bras levé) | Espace | Bouton « Action » |
+| Action (salut, haut du corps) | Espace | Bouton « Action » |
 | Pause / reprendre | Échap ou P / Entrée ou Échap | Bouton ❚❚ |
 
 Aucune souris, aucun survol, aucun verrouillage du pointeur requis. La caméra se replace seule derrière le personnage quand il avance.

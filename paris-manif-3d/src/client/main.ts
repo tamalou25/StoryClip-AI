@@ -6,9 +6,10 @@ import { DT, creerMonde, etape, type Monde } from '../sim/monde';
 import { normaliserAngle } from '../sim/math';
 import { creerCamera as creerEtatCamera, distanceCible, directionMonde, DISTANCE, lisserDistance, majCamera, poseCamera } from './camera';
 import { Commandes } from './commandes';
-import { construireDecor } from './decor';
-import { Personnage3D, TENUE_MANIFESTANT } from './personnage';
+import { construireDecor, directionSoleil } from './decor';
+import { passant, Personnage3D } from './personnage';
 import { creerApplication, creerCamera, type Qualite } from './rendu';
+import { chargerRessources, type Ressources } from './ressources';
 import { Son } from './son';
 
 const ID_JOUEUR = 'joueur';
@@ -32,12 +33,37 @@ const bandeauPortrait = el<HTMLParagraphElement>('bandeau-portrait');
 const boutonSon = el<HTMLButtonElement>('bouton-son');
 
 const app = creerApplication(canvas, qualite);
-const ambiance = construireDecor(app, carte, qualite);
-const modele = new Personnage3D(app, TENUE_MANIFESTANT, true);
+
+// ——— Chargement des ressources (textures, modèles, ciel) avant la construction de la scène ———
+boutonJouer.disabled = true;
+boutonJouer.textContent = 'Chargement… 0 %';
+let res: Ressources;
+try {
+  res = await chargerRessources(app, qualite, (p) => { boutonJouer.textContent = `Chargement… ${Math.round(p * 100)} %`; });
+} catch (e) {
+  boutonJouer.textContent = 'Chargement impossible';
+  el('menu-titre').insertAdjacentHTML('afterend', '<p class="sous-titre">Les ressources du jeu n\'ont pas pu être chargées. Rechargez la page.</p>');
+  throw e;
+}
+boutonJouer.disabled = false;
+boutonJouer.textContent = 'Jouer';
+boutonJouer.focus();
+
+construireDecor(app, carte, qualite, res);
+const ambianceSoleil = directionSoleil();
+// Manifestant : sweat à capuche ; teintes sobres accordées au décor.
+const modele = new Personnage3D(app, res.manifestant, { Purple: '#3c4350', LightBlue: '#2a3346', White: '#d9d5cc' });
+const TEINTES_PASSANTS: Record<string, string>[] = [
+  { Red_Dark: '#6b3a32', LightBrown: '#3b3a3f' },
+  { Red_Dark: '#2f4560', LightBrown: '#4a4036' },
+  { Red_Dark: '#b9a27a', LightBrown: '#2a2e36' },
+  { Red_Dark: '#3e4a3a', LightBrown: '#5a4a3a' },
+];
+for (const p of carte.passants) passant(app, res.passant, p.x, p.z, p.regard, TEINTES_PASSANTS[p.variante % TEINTES_PASSANTS.length]!, (p.variante * 0.37) % 1);
 const { entite: cameraEntite } = creerCamera(app, qualite);
 const son = new Son();
 try { son.actif = localStorage.getItem('pm3d-son') !== 'coupe'; } catch { /* stockage indisponible */ }
-modele.onPas = (_cote, intensite) => son.pas(intensite);
+modele.onPas = (intensite) => son.pas(intensite);
 
 const commandes = new Commandes(el('commandes'));
 
@@ -49,6 +75,8 @@ let fov = 55;
 let accumulateur = 0;
 let enJeu = false;
 let derniereAction = false;
+/** Point de vue imposé (crochet de test uniquement), pour contrôler le rendu sous plusieurs angles. */
+let vueImposee: { position: { x: number; y: number; z: number }; cible: { x: number; y: number; z: number } } | null = null;
 
 // ——— Boucle ———
 app.on('update', (dtBrut: number) => {
@@ -91,13 +119,12 @@ app.on('update', (dtBrut: number) => {
   modele.majPose(x, z, cap, enJeu ? vitesse : 0, derniereAction && enJeu, enJeu ? dt : dt * 0.3);
 
   distanceCamera = lisserDistance(distanceCamera, distanceCible(x, z, camera.lacet, carte.obstacles), dt);
-  const pose = poseCamera(x, z, camera.lacet, carte.obstacles, distanceCamera);
+  const pose = vueImposee ?? poseCamera(x, z, camera.lacet, carte.obstacles, distanceCamera);
   cameraEntite.setPosition(pose.position.x, pose.position.y, pose.position.z);
   cameraEntite.lookAt(pose.cible.x, pose.cible.y, pose.cible.z);
   // Léger élargissement du champ en course : sensation de vitesse sans secousse.
   fov += (55 + Math.min(vitesse, 6) * 0.9 - fov) * Math.min(1, dt * 3);
   cameraEntite.camera!.fov = fov;
-  ambiance.ciel.setPosition(pose.position.x, 0, pose.position.z);
 
   compterImage(dtBrut);
 });
@@ -204,9 +231,13 @@ app.start();
 // Crochet de test (uniquement avec ?test=1) : lecture seule de l'état.
 if (parametres.get('test') === '1') {
   (window as unknown as Record<string, unknown>).__pm3d = {
+    app, // inspection de la scène dans les tests uniquement
+    vue: (position: [number, number, number] | null, cible?: [number, number, number]) => {
+      vueImposee = position && cible ? { position: { x: position[0], y: position[1], z: position[2] }, cible: { x: cible[0], y: cible[1], z: cible[2] } } : null;
+    },
     etat: () => {
       const p = monde.personnages[ID_JOUEUR]!;
-      return { x: p.x, z: p.z, cap: p.cap, vitesse: Math.hypot(p.vx, p.vz), lacetCamera: camera.lacet, tick: monde.tick, enJeu, qualite, fps: fpsMesure, audio: son.etat(), appelsDessin: (app.stats as unknown as { drawCalls: { total: number } }).drawCalls.total };
+      return { x: p.x, z: p.z, cap: p.cap, soleil: [ambianceSoleil.x, ambianceSoleil.y, ambianceSoleil.z], vitesse: Math.hypot(p.vx, p.vz), lacetCamera: camera.lacet, tick: monde.tick, enJeu, qualite, fps: fpsMesure, audio: son.etat(), appelsDessin: (app.stats as unknown as { drawCalls: { total: number } }).drawCalls.total };
     },
   };
 }

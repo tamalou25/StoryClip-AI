@@ -108,89 +108,8 @@ export function normales(hauteur: Float32Array, l: number, h: number, force: num
   return c;
 }
 
-// ——————————————————————————————————————————————— Sols
 
-/** Dalles de pierre calcaire posées en quinconce (0,6 × 1,2 m). Toile = 4,8 m × 4,8 m. */
-export function dalles(px = 512): Couches {
-  const metres = 4.8;
-  const ppm = px / metres;
-  const [c, ctx] = toile(px, px);
-  const r = alea(7);
-  const hauteur = new Float32Array(px * px).fill(1);
-  const rangs = Math.round(metres / 0.6);
-  for (let rang = 0; rang < rangs; rang++) {
-    const y0 = Math.round(rang * 0.6 * ppm);
-    const y1 = Math.round((rang + 1) * 0.6 * ppm);
-    const decalage = rang % 2 ? 0.6 : 0;
-    for (let k = -1; k < metres / 1.2 + 1; k++) {
-      const x0 = Math.round((k * 1.2 + decalage) * ppm);
-      const x1 = Math.round(((k + 1) * 1.2 + decalage) * ppm);
-      const t = 158 + r() * 26;
-      const chaud = 6 + r() * 10;
-      ctx.fillStyle = `rgb(${t + chaud},${t + chaud * 0.55 - 3},${t - 12})`;
-      ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
-      // Joints : 1 cm environ, légèrement plus sombres et en creux.
-      // Joint ≈ 8 mm quelle que soit la résolution.
-      const j = Math.max(1, Math.round(0.008 * ppm));
-      ctx.fillStyle = `rgba(96,88,76,${j === 1 ? 0.3 : 0.42})`;
-      ctx.fillRect(x0, y0, j, y1 - y0);
-      ctx.fillRect(x0, y0, x1 - x0, j);
-      for (let y = y0; y < y1; y++) for (let x = x0; x < x0 + j; x++) hauteur[y * px + ((x % px) + px) % px] = 0;
-      for (let x = x0; x < x1; x++) for (let y = y0; y < y0 + j; y++) hauteur[y * px + ((x % px) + px) % px] = 0;
-    }
-  }
-  const salissure = fbm(px, px, 128, 11, 5);
-  grain(ctx, px, px, salissure, 34);
-  const fin = fbm(px, px, 6, 13, 2);
-  grain(ctx, px, px, fin, 10);
-  for (let i = 0; i < hauteur.length; i++) hauteur[i] = hauteur[i]! * 0.9 + fin[i]! * 0.1;
-  return { couleur: c, hauteur, largeur: px, hauteurPx: px };
-}
 
-/** Pavés de granit (≈ 14 cm) en rangs, pour bordures et trottoirs. Toile = 1,4 m. */
-export function paves(px = 256): Couches {
-  const metres = 1.4;
-  const ppm = px / metres;
-  const [c, ctx] = toile(px, px);
-  const r = alea(21);
-  const hauteur = new Float32Array(px * px);
-  ctx.fillStyle = '#3f3c39';
-  ctx.fillRect(0, 0, px, px);
-  const taille = 0.14 * ppm;
-  for (let rang = 0; rang < 10; rang++) {
-    const dec = rang % 2 ? taille / 2 : 0;
-    for (let k = -1; k < 11; k++) {
-      const x = k * taille + dec + 1.5;
-      const y = rang * taille + 1.5;
-      const t = 105 + r() * 45;
-      ctx.fillStyle = `rgb(${t},${t - 3},${t - 6})`;
-      const rayon = 3;
-      ctx.beginPath();
-      ctx.roundRect(x, y, taille - 3, taille - 3, rayon);
-      ctx.fill();
-      for (let yy = Math.floor(y); yy < y + taille - 3; yy++)
-        for (let xx = Math.floor(x); xx < x + taille - 3; xx++) {
-          const bx = Math.min(xx - x, x + taille - 3 - xx, yy - y, y + taille - 3 - yy);
-          hauteur[(yy % px) * px + ((xx % px) + px) % px] = Math.min(1, bx / 4);
-        }
-    }
-  }
-  grain(ctx, px, px, fbm(px, px, 8, 23, 3), 30);
-  return { couleur: c, hauteur, largeur: px, hauteurPx: px };
-}
-
-/** Enrobé (asphalte) avec granulats et légères traces. Toile = 6 m. */
-export function asphalte(px = 256): Couches {
-  const [c, ctx] = toile(px, px);
-  ctx.fillStyle = '#4b4d51';
-  ctx.fillRect(0, 0, px, px);
-  const gros = fbm(px, px, 96, 31, 4);
-  const fin = fbm(px, px, 3, 37, 2);
-  grain(ctx, px, px, gros, 26);
-  grain(ctx, px, px, fin, 30);
-  const hauteur = new Float32Array(px * px).map((_, i) => fin[i]!);
-  return { couleur: c, hauteur, largeur: px, hauteurPx: px };
-}
 
 // ——————————————————————————————————————————————— Façades
 
@@ -392,50 +311,7 @@ export function zinc(px = 128): Couches {
   return { couleur: c, hauteur, largeur: px, hauteurPx: px };
 }
 
-/** Écorce de platane : plaques claires et sombres. Toile = 1 m. */
-export function ecorce(px = 128): Couches {
-  const [c, ctx] = toile(px, px);
-  const plaques = fbm(px, px, 22, 61, 3);
-  const img = ctx.createImageData(px, px);
-  const hauteur = new Float32Array(px * px);
-  for (let i = 0; i < px * px; i++) {
-    const v = plaques[i]!;
-    const clair = v > 0.52;
-    const t = clair ? 128 + v * 40 : 82 + v * 30;
-    img.data[i * 4] = t;
-    img.data[i * 4 + 1] = t - (clair ? 4 : 10);
-    img.data[i * 4 + 2] = t - (clair ? 22 : 24);
-    img.data[i * 4 + 3] = 255;
-    hauteur[i] = clair ? 0.8 : 0.3;
-  }
-  ctx.putImageData(img, 0, 0);
-  return { couleur: c, hauteur, largeur: px, hauteurPx: px };
-}
 
-/** Feuillage : taches de feuilles claires et sombres, fond légèrement ajouré. */
-export function feuillage(px = 256): Couches {
-  const [c, ctx] = toile(px, px);
-  const r = alea(71);
-  ctx.fillStyle = '#3d4f2e';
-  ctx.fillRect(0, 0, px, px);
-  const hauteur = new Float32Array(px * px).fill(0.2);
-  for (let i = 0; i < 2200; i++) {
-    const x = r() * px;
-    const y = r() * px;
-    const t = r();
-    ctx.fillStyle = t > 0.7 ? '#76875a' : t > 0.35 ? '#56693f' : '#33432a';
-    ctx.beginPath();
-    ctx.ellipse(x, y, 3 + r() * 4, 2 + r() * 2.5, r() * Math.PI, 0, Math.PI * 2);
-    ctx.fill();
-    const rr = 4;
-    for (let yy = -rr; yy <= rr; yy++) for (let xx = -rr; xx <= rr; xx++) {
-      const ix = (((x + xx) | 0) % px + px) % px;
-      const iy = (((y + yy) | 0) % px + px) % px;
-      hauteur[iy * px + ix] = Math.max(hauteur[iy * px + ix]!, 1 - Math.hypot(xx, yy) / rr);
-    }
-  }
-  return { couleur: c, hauteur, largeur: px, hauteurPx: px };
-}
 
 /** Bronze patiné (vert-de-gris dans les creux). */
 export function bronze(px = 128): Couches {
@@ -454,32 +330,6 @@ export function bronze(px = 128): Couches {
   return { couleur: c, hauteur: n, largeur: px, hauteurPx: px };
 }
 
-/** Ciel : dégradé vertical doux avec voile de nuages. Toile panoramique (u = azimut, v = hauteur). */
-export function ciel(l = 512, h = 256): HTMLCanvasElement {
-  const [c, ctx] = toile(l, h);
-  const g = ctx.createLinearGradient(0, 0, 0, h);
-  g.addColorStop(0, '#5d86b8');
-  g.addColorStop(0.42, '#8fb0d4');
-  g.addColorStop(0.5, '#cad9e6');
-  g.addColorStop(0.53, '#d9d8d0');
-  g.addColorStop(1, '#a9a69b');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, l, h);
-  const nuages = fbm(l, h, 90, 91, 5);
-  const img = ctx.getImageData(0, 0, l, h);
-  for (let y = 0; y < h * 0.5; y++) {
-    const masque = Math.sin((y / (h * 0.5)) * Math.PI) ** 1.5;
-    for (let x = 0; x < l; x++) {
-      const i = y * l + x;
-      const a = Math.max(0, nuages[i]! - 0.52) * 2.4 * masque;
-      img.data[i * 4] = img.data[i * 4]! + (250 - img.data[i * 4]!) * a;
-      img.data[i * 4 + 1] = img.data[i * 4 + 1]! + (248 - img.data[i * 4 + 1]!) * a;
-      img.data[i * 4 + 2] = img.data[i * 4 + 2]! + (244 - img.data[i * 4 + 2]!) * a;
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-  return c;
-}
 
 /** Ombre de contact douce (disque radial), utilisée sous le personnage. */
 export function ombreContact(px = 64): HTMLCanvasElement {
