@@ -107,11 +107,19 @@ describe('collisions', () => {
 });
 
 describe('monde', () => {
-  it('avance le tick et arrête un personnage sans intention', () => {
-    let m = creerMonde(CARTE_REPUBLIQUE, ['a', 'b']);
-    for (let i = 0; i < 30; i++) m = etape(m, { a: { dx: 1, dz: 0, action: false } }, CARTE_REPUBLIQUE);
+  it('avance le tick et fait courir le joueur selon son intention', () => {
+    let m = creerMonde(CARTE_REPUBLIQUE, { campJoueur: 'manif', reglages: { effectifs: { manif: 1, ordre: 1 } } });
+    const x0 = m.acteurs.joueur!.x;
+    for (let i = 0; i < 30; i++) m = etape(m, { joueur: { dx: 1, dz: 0, action: false } }, CARTE_REPUBLIQUE);
     expect(m.tick).toBe(30);
-    expect(m.personnages.a!.x).toBeGreaterThan(-36);
-    expect(m.personnages.b).toEqual(creerMonde(CARTE_REPUBLIQUE, ['a', 'b']).personnages.b);
+    expect(m.acteurs.joueur!.x).toBeGreaterThan(x0 + 3);
+  });
+
+  it('un joueur sans intention reste immobile', () => {
+    let m = creerMonde(CARTE_REPUBLIQUE, { campJoueur: 'ordre', reglages: { effectifs: { manif: 0, ordre: 1 } } });
+    const { x, z } = m.acteurs.joueur!;
+    for (let i = 0; i < 30; i++) m = etape(m, {}, CARTE_REPUBLIQUE);
+    expect(m.acteurs.joueur!.x).toBe(x);
+    expect(m.acteurs.joueur!.z).toBe(z);
   });
 });

@@ -6,6 +6,10 @@
 export class Son {
   private ctx: AudioContext | null = null;
   private maitre: GainNode | null = null;
+  /** Bus des effets de jeu (volume réglable à part de l'ambiance). */
+  private busEffets: GainNode | null = null;
+  private volumeAmbiance = 0.9;
+  private volumeEffets = 1;
   private bruit: AudioBuffer | null = null;
   private minuterie: number | null = null;
   actif = true;
@@ -22,12 +26,31 @@ export class Son {
     this.ctx = new Ctx();
     this.maitre = this.ctx.createGain();
     this.maitre.gain.value = 0;
-    this.maitre.gain.linearRampToValueAtTime(0.9, this.ctx.currentTime + 1.5); // fondu d'entrée
+    this.maitre.gain.linearRampToValueAtTime(this.volumeAmbiance, this.ctx.currentTime + 1.5); // fondu d'entrée
     this.maitre.connect(this.ctx.destination);
+    this.busEffets = this.ctx.createGain();
+    this.busEffets.gain.value = this.volumeEffets;
+    this.busEffets.connect(this.ctx.destination);
     this.bruit = this.creerBruit(4);
     this.rumeur();
     this.murmure();
     this.planifier();
+  }
+
+  /** Contexte et bus des effets, pour les sons de jeu (null tant que l'audio n'a pas démarré). */
+  sortieEffets(): { ctx: AudioContext; bus: GainNode } | null {
+    if (!this.ctx || !this.busEffets || this.ctx.state !== 'running') return null;
+    return { ctx: this.ctx, bus: this.busEffets };
+  }
+
+  /** Volumes ∈ [0, 1] : ambiance (rumeur, pas) et effets de jeu. */
+  reglerVolumes(ambiance: number, effets: number): void {
+    this.volumeAmbiance = ambiance * 0.9;
+    this.volumeEffets = effets;
+    if (this.ctx && this.maitre && this.busEffets) {
+      this.maitre.gain.setTargetAtTime(this.volumeAmbiance, this.ctx.currentTime, 0.05);
+      this.busEffets.gain.setTargetAtTime(this.volumeEffets, this.ctx.currentTime, 0.05);
+    }
   }
 
   /** État du contexte audio (diagnostic et tests). */

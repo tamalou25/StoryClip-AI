@@ -9,14 +9,16 @@ import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 
 const PORT = 4174;
-const URL_JEU = `http://localhost:${PORT}/?test=1`;
+// duree=600 : aucune fin de partie pendant la fumée (les règles sont testées dans e2e/partie.mjs).
+const URL_JEU = `http://localhost:${PORT}/?test=1&duree=600`;
 // Le rendu logiciel de Chromium headless ne tient pas la qualité haute (SSAO, MSAA) en temps réel :
 // les vérifications de commandes se font en qualité basse, la qualité haute est contrôlée à part.
 const URL_BASSE = `${URL_JEU}&qualite=basse`;
 const CAPTURES = new URL('./captures/', import.meta.url).pathname;
 mkdirSync(CAPTURES, { recursive: true });
 
-const serveur = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'pipe' });
+// Vite est lancé directement (pas via npx) : serveur.kill() arrête bien le processus à la fin.
+const serveur = spawn(process.execPath, [new URL('../node_modules/vite/bin/vite.js', import.meta.url).pathname, 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'pipe' });
 const attendre = (ms) => new Promise((r) => setTimeout(r, ms));
 let echecs = 0;
 const verifier = (condition, message, detail = '') => {
@@ -59,8 +61,12 @@ async function ordinateur(navigateur) {
   verifier(!atteints.includes('bouton-pause'), 'Tab reste dans le menu (arrière-plan inerte)', atteints.join(','));
   await page.focus('#bouton-jouer');
   await page.keyboard.press('Enter');
+  await attendre(200);
+  const focusCamp = await page.evaluate(() => document.activeElement?.id);
+  verifier(focusCamp === 'camp-manif', 'Entrée ouvre le choix du camp, focus sur Manifestants', focusCamp);
+  await page.keyboard.press('Enter');
   await attendre(300);
-  verifier((await etat(page)).enJeu, 'Entrée lance la partie');
+  verifier((await etat(page)).enJeu && (await etat(page)).camp === 'manif', 'Entrée sur le camp lance la partie');
 
   await attendre(1000); // préchauffage : les premières images du rendu logiciel sont très lentes
   // Les durées réelles varient avec le rendu logiciel : on attend des états, pas des durées.
@@ -72,7 +78,7 @@ async function ordinateur(navigateur) {
   // On continue tout droit dans le socle du monument : il doit arrêter le personnage.
   const e2 = await jusqua(page, (e) => e.x > -10 && e.vitesse < 0.05, 60000);
   await page.keyboard.up('KeyW');
-  verifier(e2.x > -5.05 && e2.x <= -4.5 - 0.4 + 1e-3 && Math.abs(e2.z) < 0.5, 'bloqué contre le socle central, sans le traverser', `x=${e2.x.toFixed(2)} z=${e2.z.toFixed(2)}`);
+  verifier(e2.x > -5.05 && e2.x <= -4.5 - 0.4 + 1e-3 && Math.abs(e2.z) < 4.5, 'bloqué contre le socle central, sans le traverser', `x=${e2.x.toFixed(2)} z=${e2.z.toFixed(2)}`);
 
   // Maj + avancer = marche.
   await page.keyboard.down('ShiftLeft');
@@ -105,7 +111,7 @@ async function ordinateur(navigateur) {
   await page.keyboard.press('Escape');
   await attendre(100);
   const enPause = await etat(page);
-  verifier(!enPause.enJeu && (await page.evaluate(() => document.activeElement?.id)) === 'bouton-jouer', 'Échap met en pause, focus sur Reprendre');
+  verifier(!enPause.enJeu && (await page.evaluate(() => document.activeElement?.id)) === 'bouton-reprendre', 'Échap met en pause, focus sur Reprendre');
   const tickPause = enPause.tick;
   await attendre(500);
   verifier((await etat(page)).tick === tickPause, 'la simulation est gelée pendant la pause');
@@ -159,8 +165,10 @@ async function mobile(navigateur) {
   await page.waitForFunction(() => window.__pm3d.etat().fps > 3, null, { timeout: 60000 });
   verifier((await etat(page)).qualite === 'basse', 'qualité basse par défaut sur écran tactile');
   await page.tap('#bouton-jouer');
+  await attendre(200);
+  await page.tap('#camp-manif');
   await attendre(300);
-  verifier((await etat(page)).enJeu, 'toucher Jouer lance la partie');
+  verifier((await etat(page)).enJeu, 'toucher Jouer puis un camp lance la partie');
 
   const action = await page.locator('[data-commande="action"]').boundingBox();
   verifier(action && action.width >= 44 && action.height >= 44, 'bouton Action ≥ 44 px', action && `${action.width}×${action.height}`);

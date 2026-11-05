@@ -17,39 +17,136 @@
         <button type="button" tabindex="-1" class="bouton-jeu" data-commande="recentrer" aria-label="Recentrer la caméra">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5a7 7 0 1 1-6.6 4.7" /><path d="M5 4v5h5" /></svg>
         </button>
+        <button type="button" tabindex="-1" class="bouton-jeu bouton-special" data-commande="special" aria-label="Spécial">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.5 6 6.5.6-5 4.3 1.6 6.4L12 17l-5.6 3.3L8 13.9 3 9.6l6.5-.6z" /></svg>
+          <span class="etiquette-bouton" id="etiquette-special">Spécial</span>
+        </button>
         <button type="button" tabindex="-1" class="bouton-jeu bouton-principal" data-commande="action" aria-label="Action">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20V5" /><path d="M7 9l5-5 5 5" /></svg>
+          <span class="etiquette-bouton" id="etiquette-action">Action</span>
         </button>
       </div>
     </div>
 
-    <div class="hud">
-      <button type="button" id="bouton-pause" class="bouton-hud" aria-label="Pause (Échap)">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6v12M15 6v12" /></svg>
-      </button>
-      <span id="aide-clavier" class="info-hud aide-clavier">
-        <kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd> courir · <kbd>Maj</kbd> marcher · <kbd>A</kbd><kbd>E</kbd> caméra · <kbd>C</kbd> recentrer
-      </span>
-      <span id="fps" class="info-hud fps" aria-hidden="true"></span>
+    <div class="hud" id="hud">
+      <div class="hud-ligne">
+        <button type="button" id="bouton-pause" class="bouton-hud" aria-label="Pause (Échap)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6v12M15 6v12" /></svg>
+        </button>
+        <div class="objectif" id="objectif" hidden>
+          <div class="objectif-haut">
+            <span class="chrono" id="chrono" aria-label="Temps restant">5:00</span>
+            <span class="jauge-etiquette" id="jauge-etiquette">Mobilisation 0 %</span>
+          </div>
+          <div class="jauge" role="progressbar" aria-labelledby="jauge-etiquette" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="jauge"><div class="jauge-barre" id="jauge-barre"></div></div>
+          <ul class="zones" id="zones" aria-label="Zones"></ul>
+        </div>
+        <span id="fps" class="info-hud fps" aria-hidden="true"></span>
+      </div>
+      <p id="aide-clavier" class="info-hud aide-clavier" hidden>
+        <kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd> courir · <kbd>Espace</kbd> <span id="aide-action">action</span> · <kbd>F</kbd> <span id="aide-special">spécial</span> · <kbd>C</kbd> recentrer · <kbd>Échap</kbd> pause
+      </p>
+      <p id="conseil" class="conseil" hidden></p>
+      <ol id="journal" class="journal" aria-live="polite" aria-relevant="additions"></ol>
+      <div class="etat-joueur" id="etat-joueur" hidden>
+        <div class="souffle" aria-label="Souffle"><div class="souffle-barre" id="souffle-barre"></div></div>
+        <div class="capacites">
+          <span class="capacite" id="cap-action"><kbd>Espace</kbd> <span id="cap-action-nom">Rassembler</span></span>
+          <span class="capacite" id="cap-special"><kbd>F</kbd> <span id="cap-special-nom">Slogan</span> <span class="capacite-etat" id="cap-special-etat"></span></span>
+        </div>
+      </div>
+      <p id="annonce" class="annonce" role="status" aria-live="assertive" hidden></p>
     </div>
 
     <p id="bandeau-portrait" class="bandeau" hidden>Tournez le téléphone pour jouer en paysage.</p>
 
     <div id="menu" class="menu" role="dialog" aria-modal="true" aria-labelledby="menu-titre">
       <div class="panneau">
-        <p class="surtitre">Prototype · place de la République (fictive)</p>
-        <h1 id="menu-titre">Paris <span>Manif</span></h1>
-        <p class="sous-titre">Traversez la place, prenez vos repères. Les camps, objectifs et parties viendront ensuite.</p>
-        <button type="button" id="bouton-jouer" class="bouton-menu" autofocus>Jouer</button>
-        <div class="reglages">
-          <button type="button" id="bouton-qualite" class="bouton-menu secondaire">Qualité : basse</button>
-          <button type="button" id="bouton-son" class="bouton-menu secondaire" aria-pressed="true">Son : activé</button>
-        </div>
-        <dl class="aide">
-          <div><dt>Clavier</dt><dd><kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd> ou flèches · <kbd>Maj</kbd> marcher · <kbd>A</kbd>/<kbd>E</kbd> caméra · <kbd>C</kbd> recentrer · <kbd>Espace</kbd> action · <kbd>Échap</kbd> pause</dd></div>
-          <div><dt>Tactile</dt><dd>Pouce gauche : se déplacer (pousser peu = marcher) · glisser à droite : caméra · boutons à droite</dd></div>
-        </dl>
-        <p class="note">Univers fictif. Aucune personne, unité ni insigne réels.</p>
+        <!-- Accueil -->
+        <section id="ecran-accueil" class="ecran">
+          <p class="surtitre">Place de la République (fictive) · parties de 5 min</p>
+          <h1 id="menu-titre">Paris <span>Manif</span></h1>
+          <p class="sous-titre">Manifestants contre forces de l'ordre : tenez les zones ou videz la place. Un camp, huit bots, une place.</p>
+          <button type="button" id="bouton-jouer" class="bouton-menu" autofocus>Jouer</button>
+          <div class="reglages">
+            <button type="button" id="bouton-qualite" class="bouton-menu secondaire">Qualité : basse</button>
+            <button type="button" id="bouton-son" class="bouton-menu secondaire" aria-pressed="true">Son : activé</button>
+            <button type="button" id="bouton-options" class="bouton-menu secondaire" aria-expanded="false" aria-controls="options">Options</button>
+          </div>
+          <div id="options" class="options" hidden>
+            <label>Ambiance <input type="range" id="volume-ambiance" min="0" max="100" value="90" /></label>
+            <label>Effets <input type="range" id="volume-effets" min="0" max="100" value="100" /></label>
+            <label class="case"><input type="checkbox" id="reduire-effets" /> Réduire les effets visuels (gaz plus discret)</label>
+            <label class="case"><input type="checkbox" id="afficher-tuto" checked /> Afficher les conseils en partie</label>
+          </div>
+          <dl class="aide">
+            <div><dt>Clavier</dt><dd><kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd> ou flèches · <kbd>Maj</kbd> marcher · <kbd>Espace</kbd> action · <kbd>F</kbd> spécial · <kbd>A</kbd>/<kbd>E</kbd> caméra · <kbd>C</kbd> recentrer · <kbd>Échap</kbd> pause</dd></div>
+            <div><dt>Tactile</dt><dd>Pouce gauche : se déplacer (pousser peu = marcher) · glisser à droite : caméra · boutons Action et Spécial à droite</dd></div>
+          </dl>
+          <p class="note">Univers fictif. Aucune personne, unité ni insigne réels. Effets non réalistes.</p>
+        </section>
+
+        <!-- Choix du camp -->
+        <section id="ecran-camp" class="ecran" hidden>
+          <p class="surtitre">Choisissez votre camp</p>
+          <h2 class="titre-ecran">Qui jouez-vous ?</h2>
+          <div class="camps">
+            <button type="button" class="carte-camp manif" id="camp-manif" data-camp="manif">
+              <span class="carte-titre">Manifestants</span>
+              <span class="carte-texte">Occupez les zones pour faire monter la mobilisation jusqu'à 100 % avant la fin du temps. Le nombre fait la force.</span>
+              <span class="carte-capacites"><b>Action</b> rassembler les camarades · <b>Spécial</b> slogan (souffle et élan)</span>
+            </button>
+            <button type="button" class="carte-camp ordre" id="camp-ordre" data-camp="ordre">
+              <span class="carte-titre">Forces de l'ordre</span>
+              <span class="carte-texte">Reprenez les zones et tenez jusqu'à la fin, ou dispersez tous les manifestants d'un coup.</span>
+              <span class="carte-capacites"><b>Action</b> former un cordon · <b>Spécial</b> gaz fictif (3 charges)</span>
+            </button>
+          </div>
+          <div class="reglages reglages-partie">
+            <div class="choix" role="group" aria-label="Difficulté des adversaires">
+              <span class="choix-titre">Adversaires</span>
+              <button type="button" class="bouton-menu secondaire petit" data-difficulte="facile">Faciles</button>
+              <button type="button" class="bouton-menu secondaire petit" data-difficulte="normal" aria-pressed="true">Normaux</button>
+              <button type="button" class="bouton-menu secondaire petit" data-difficulte="difficile">Coriaces</button>
+            </div>
+            <div class="choix" role="group" aria-label="Durée">
+              <span class="choix-titre">Durée</span>
+              <button type="button" class="bouton-menu secondaire petit" data-duree="180">3 min</button>
+              <button type="button" class="bouton-menu secondaire petit" data-duree="300" aria-pressed="true">5 min</button>
+            </div>
+          </div>
+          <button type="button" id="bouton-retour-accueil" class="bouton-menu secondaire">Retour</button>
+        </section>
+
+        <!-- Pause -->
+        <section id="ecran-pause" class="ecran" hidden>
+          <p class="surtitre">Pause</p>
+          <h2 class="titre-ecran" id="pause-titre">Partie en pause</h2>
+          <p class="sous-titre" id="pause-rappel"></p>
+          <button type="button" id="bouton-reprendre" class="bouton-menu">Reprendre</button>
+          <div class="reglages">
+            <button type="button" id="bouton-recommencer" class="bouton-menu secondaire">Recommencer</button>
+            <button type="button" id="bouton-quitter" class="bouton-menu secondaire">Quitter la partie</button>
+          </div>
+          <dl class="aide compacte" id="pause-aide"></dl>
+        </section>
+
+        <!-- Résultat -->
+        <section id="ecran-resultat" class="ecran" hidden>
+          <p class="surtitre" id="resultat-surtitre">Fin de partie</p>
+          <h2 class="titre-ecran" id="resultat-titre">Victoire</h2>
+          <p class="sous-titre" id="resultat-raison"></p>
+          <div class="bilan">
+            <table class="tableau" aria-label="Bilan de la partie"><tbody id="resultat-bilan"></tbody></table>
+            <p class="conseil-resultat" id="resultat-conseil"></p>
+            <ol class="journal-resultat" id="resultat-journal" aria-label="Moments clés"></ol>
+          </div>
+          <button type="button" id="bouton-revanche" class="bouton-menu">Revanche</button>
+          <div class="reglages">
+            <button type="button" id="bouton-changer-camp" class="bouton-menu secondaire">Changer de camp</button>
+            <button type="button" id="bouton-menu-principal" class="bouton-menu secondaire">Menu</button>
+          </div>
+        </section>
       </div>
     </div>
 

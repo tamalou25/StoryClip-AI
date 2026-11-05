@@ -8,6 +8,8 @@ export interface EtatCommandes {
   jx: number;
   jy: number;
   action: boolean;
+  /** Bouton spécial maintenu (slogan / gaz fictif) ; la simulation ne réagit qu'au front montant. */
+  special: boolean;
   /** Rotation caméra continue demandée au clavier (−1 gauche, +1 droite). */
   rotationClavier: number;
   /** Rotation caméra accumulée par glisser depuis la dernière lecture (radians). */
@@ -21,12 +23,13 @@ const ARRIERE = ['KeyS', 'ArrowDown'];
 const GAUCHE = ['KeyA', 'ArrowLeft'];
 const DROITE = ['KeyD', 'ArrowRight'];
 const ACTION = ['Space'];
+const SPECIAL = ['KeyF', 'ControlLeft', 'ControlRight'];
 const RECENTRER = ['KeyC'];
 const CAM_GAUCHE = ['KeyQ']; // touche A sur AZERTY
 const CAM_DROITE = ['KeyE'];
 const MARCHE = ['ShiftLeft', 'ShiftRight'];
 const FACTEUR_MARCHE = 0.29; // ≈ 1,6 m/s
-const TOUCHES_JEU = new Set([...AVANT, ...ARRIERE, ...GAUCHE, ...DROITE, ...ACTION, ...RECENTRER, ...CAM_GAUCHE, ...CAM_DROITE, ...MARCHE]);
+const TOUCHES_JEU = new Set([...AVANT, ...ARRIERE, ...GAUCHE, ...DROITE, ...ACTION, ...SPECIAL, ...RECENTRER, ...CAM_GAUCHE, ...CAM_DROITE, ...MARCHE]);
 
 const RAYON_JOYSTICK = 56; // px
 const ZONE_MORTE = 0.15;
@@ -39,6 +42,9 @@ export class Commandes {
   private rotationGlisser = 0;
   private recentrerDemande = false;
   private actionTactile = false;
+  private specialTactile = false;
+  /** Un appui bref sur Spécial est retenu jusqu'à la prochaine lecture : rien n'est perdu à bas débit d'images. */
+  private specialRetenu = false;
   private actif = false;
   private readonly relacheursBoutons: (() => void)[] = [];
 
@@ -64,6 +70,7 @@ export class Commandes {
     }
 
     this.brancherBouton('[data-commande="action"]', (bas) => (this.actionTactile = bas));
+    this.brancherBouton('[data-commande="special"]', (bas) => { this.specialTactile = bas; if (bas) this.specialRetenu = true; });
     this.brancherBouton('[data-commande="recentrer"]', (bas) => {
       if (bas) this.recentrerDemande = true;
     });
@@ -83,6 +90,8 @@ export class Commandes {
     this.rotationGlisser = 0;
     this.recentrerDemande = false;
     this.actionTactile = false;
+    this.specialTactile = false;
+    this.specialRetenu = false;
     this.base.hidden = true;
     for (const relacher of this.relacheursBoutons) relacher();
   }
@@ -99,20 +108,23 @@ export class Commandes {
       jx,
       jy,
       action: t(ACTION) === 1 || this.actionTactile,
+      special: t(SPECIAL) === 1 || this.specialTactile || this.specialRetenu,
       rotationClavier: t(CAM_DROITE) - t(CAM_GAUCHE),
       rotationGlisser: this.rotationGlisser,
       recentrer: this.recentrerDemande,
     };
     this.rotationGlisser = 0;
     this.recentrerDemande = false;
+    this.specialRetenu = false;
     return etat;
   }
 
   private toucheBas(e: KeyboardEvent): void {
     if (!this.actif || !TOUCHES_JEU.has(e.code)) return;
-    if (e.ctrlKey || e.metaKey || e.altKey) return; // raccourcis du navigateur ou du système
+    if (e.metaKey || e.altKey || (e.ctrlKey && !SPECIAL.includes(e.code))) return; // raccourcis du navigateur ou du système
     e.preventDefault(); // pas de défilement de page avec les flèches ou Espace
     if (RECENTRER.includes(e.code) && !e.repeat) this.recentrerDemande = true;
+    if (SPECIAL.includes(e.code) && !e.repeat) this.specialRetenu = true;
     this.touches.add(e.code);
   }
 

@@ -27,11 +27,11 @@ export function creerPersonnage(x: number, z: number, cap = 0): Personnage {
   return { x, z, vx: 0, vz: 0, cap };
 }
 
-/** Avance un personnage d'un pas dt selon son intention. Ne modifie pas l'entrée. */
-export function avancer(p: Personnage, intention: Intention, dt: number, carte: Carte): Personnage {
+/** Avance un personnage d'un pas dt selon son intention. Ne modifie pas l'entrée. vitesseMax permet ralentis et élans. */
+export function avancer(p: Personnage, intention: Intention, dt: number, carte: Carte, vitesseMax = VITESSE_MAX): Personnage {
   // 1. Vitesse : on tend vers la vitesse voulue (accélération et freinage doux).
-  const cibleX = intention.dx * VITESSE_MAX;
-  const cibleZ = intention.dz * VITESSE_MAX;
+  const cibleX = intention.dx * vitesseMax;
+  const cibleZ = intention.dz * vitesseMax;
   const accelere = Math.hypot(cibleX, cibleZ) > Math.hypot(p.vx, p.vz) - 1e-6;
   const k = lissage(accelere ? ACCELERATION : FREINAGE, dt);
   const vx = p.vx + (cibleX - p.vx) * k;
