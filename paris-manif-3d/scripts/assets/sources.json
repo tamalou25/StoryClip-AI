@@ -1,0 +1,76 @@
+{
+  "_note": "Ressources tierces utilisées par le jeu. Licences vérifiées le 2026-11-05. Les fichiers bruts vont dans assets-sources/ (non versionné) ; scripts/assets/preparer.mjs produit les versions optimisées dans public/ressources/.",
+  "polyhavenTextures": [
+    {
+      "id": "concrete_tiles_02",
+      "resolution": "2k",
+      "usage": "dalles de l'esplanade"
+    },
+    {
+      "id": "cobblestone_floor_09",
+      "resolution": "1k",
+      "usage": "pavés (bandes d'arbres, bordures, trottoirs)"
+    },
+    {
+      "id": "asphalt_02",
+      "resolution": "1k",
+      "usage": "chaussée"
+    },
+    {
+      "id": "bark_platanus",
+      "resolution": "1k",
+      "usage": "écorce des platanes"
+    },
+    {
+      "id": "beige_wall_001",
+      "resolution": "1k",
+      "usage": "détail de la pierre des façades"
+    }
+  ],
+  "polyhavenModeles": [
+    {
+      "id": "street_lamp_01",
+      "resolution": "1k",
+      "usage": "candélabres"
+    },
+    {
+      "id": "modular_street_seating",
+      "resolution": "1k",
+      "usage": "bancs"
+    },
+    {
+      "id": "gothic_statue",
+      "resolution": "1k",
+      "usage": "statue allégorique au sommet du monument (fictive)"
+    }
+  ],
+  "polyhavenHdri": [
+    {
+      "id": "kloofendal_48d_partly_cloudy_puresky",
+      "resolutions": [
+        "1k",
+        "2k"
+      ],
+      "usage": "ciel et éclairage d'ambiance (IBL)"
+    }
+  ],
+  "ambientcg": [
+    {
+      "id": "LeafSet010",
+      "fichier": "LeafSet010_1K-PNG.zip",
+      "usage": "feuilles palmées pour les houppiers de platanes"
+    }
+  ],
+  "quaternius": {
+    "pack": "Ultimate Modular Men (Feb 2022)",
+    "page": "https://quaternius.com/packs/ultimatemodularcharacters.html",
+    "licence": "CC0 1.0",
+    "_acces": "Le lien officiel (Google Drive) renvoyait « quota exceeded » le 2026-11-05 ; fichiers identiques récupérés depuis une copie publique du pack incluant son License.txt d'origine.",
+    "base": "https://raw.githubusercontent.com/osman-1002/3D-3rd-Person-Godot-Game-With-GenAI-Integration/master/addons/Ultimate%20Modular%20Men-%20Feb%202022",
+    "fichiers": [
+      "Individual%20Characters/glTF/Casual_Hoodie.gltf",
+      "Individual%20Characters/glTF/Casual_2.gltf",
+      "License.txt"
+    ]
+  }
+}

@@ -9,22 +9,55 @@
 | typescript | 6.0.3 | Apache-2.0 | Développement |
 | vitest | 5.0.5 | MIT | Tests |
 | @playwright/test | 1.63.0 | Apache-2.0 | Tests |
+| @gltf-transform/core, functions, extensions | 4.5.1 | MIT | Préparation des modèles (hors client) |
+| meshoptimizer | 1.3.0 | MIT | Simplification des maillages (hors client) |
+| sharp | 0.35.5 | Apache-2.0 | Conversion WebP des textures (hors client) |
+| @types/node | 22.20.5 | MIT | Typage des tests |
 | colyseus (prévu) | 0.18.x | MIT | Serveur, incrément 4 — à revérifier à l'installation |
 
-## Assets
-Aucun asset externe. Toutes les ressources sont **générées par le code du projet** au chargement (licence du projet) :
-- textures procédurales canvas (`src/client/textures.ts`) : dalles, pavés, asphalte, travées haussmanniennes, rez-de-chaussée et enseignes **inventées**, zinc, écorce, feuillage, bronze, ciel, garde-corps, affiches fictives ; cartes de normales dérivées de cartes de hauteur ;
-- géométrie (`src/client/geometrie.ts`, `decor.ts`, `personnage.ts`) : primitives PlayCanvas et maillages construits en code ;
-- sons synthétisés en direct avec Web Audio (`src/client/son.ts`) : aucun fichier audio.
-Aucun modèle 3D ni son tiers n'a été téléchargé : les hôtes d'assets testés (dl.polyhaven.org, kenney.nl, github.com) étaient bloqués par le réseau de l'environnement de développement.
-Avant d'ajouter un asset : noter source, auteur, licence (CC0 de préférence), URL et date dans ce tableau.
+## Ressources tierces (toutes CC0 1.0, domaine public)
 
-| Asset | Source | Licence | Date |
-|---|---|---|---|
-| — | — | — | — |
+Aucune attribution n'est exigée par CC0 ; elle est donnée ici par respect des auteurs et pour la traçabilité.
+Licences vérifiées le 05/11/2026 sur les pages des sources. Liste lisible par machine : `public/ressources/CREDITS.json`.
+
+| Ressource | Source | Auteur(s) | Usage dans le jeu | Transformations |
+|---|---|---|---|---|
+| `concrete_tiles_02` (texture PBR) | [Poly Haven](https://polyhaven.com/a/concrete_tiles_02) | Charlotte Baglioni | Dalles de l'esplanade (1,825 m) | WebP 2048 (haute) / 512 (basse) ; teinte légèrement éclaircie dans le matériau |
+| `cobblestone_floor_09` (texture PBR) | [Poly Haven](https://polyhaven.com/a/cobblestone_floor_09) | Charlotte Baglioni | Pavés : bandes d'arbres, bordures, trottoirs | WebP 1024 / 512 |
+| `asphalt_02` (texture PBR) | [Poly Haven](https://polyhaven.com/a/asphalt_02) | Rob Tuytel | Chaussée | WebP 1024 / 512, teinte assombrie |
+| `bark_platanus` (texture PBR) | [Poly Haven](https://polyhaven.com/a/bark_platanus) | Dimitrios Savva | Écorce des platanes | WebP 1024 / 256 |
+| `beige_wall_001` (texture PBR) | [Poly Haven](https://polyhaven.com/a/beige_wall_001) | Dimitrios Savva, Rico Cilliers | Pierre (corps des immeubles, monument) et normales de détail des façades | WebP 1024 / 512 |
+| `street_lamp_01` (modèle glTF) | [Poly Haven](https://polyhaven.com/a/street_lamp_01) | Josh Dean | Candélabres (3,87 m) | GLB ; 15 400 triangles (haute) / 3 900 (basse) ; textures WebP 1024 / 256 |
+| `modular_street_seating` (modèle glTF) | [Poly Haven](https://polyhaven.com/a/modular_street_seating) | Stuart Attenborrow | Bancs | Un seul module droit extrait et recentré ; GLB 12 500 / 5 700 triangles ; WebP 512 / 256 |
+| `gothic_statue` (modèle glTF) | [Poly Haven](https://polyhaven.com/a/gothic_statue) | Benny Weimer | Statue allégorique (fictive) du monument, ×2,2 | GLB 16 600 / 14 700 triangles ; WebP 1024 / 512 |
+| `kloofendal_48d_partly_cloudy_puresky` (HDRI) | [Poly Haven](https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky) | Greg Zaal, Jarod Guest | Ciel et éclairage d'ambiance (IBL) | `.hdr` 2k (haute) / 1k (basse), sans modification ; ciel tourné pour placer le soleil au sud-ouest |
+| `LeafSet010` (atlas de feuilles) | [ambientCG](https://ambientcg.com/view?id=LeafSet010) | Lennart Demes | Feuillage des platanes | Rameau composé par script (34 feuilles tournées, teintées, sur une tige dessinée) ; WebP 512 avec transparence |
+| *Ultimate Modular Men* (Feb 2022) : `Casual_Hoodie`, `Casual_2` | [Quaternius](https://quaternius.com/packs/ultimatemodularcharacters.html) | Quaternius | Manifestant jouable, passants | GLB ; animations conservées : Idle, Idle_Neutral, Walk, Run, Wave ; couleurs des vêtements changées en code. Licence d'origine copiée : `public/ressources/modeles/LICENCE-Quaternius.txt` |
+
+### Reproduire
+```bash
+node scripts/assets/telecharger.mjs   # → assets-sources/ (non versionné, ≈ 50 Mo)
+node scripts/assets/preparer.mjs      # → public/ressources/ (versionné, 18 Mo)
+```
+La liste des sources est dans `scripts/assets/sources.json`.
+
+### Accès réseau constatés le 05/11/2026 (environnement de développement)
+| Hôte | Résultat | Conséquence |
+|---|---|---|
+| api.polyhaven.com, dl.polyhaven.org | accessibles | textures, modèles, HDRI téléchargés |
+| ambientcg.com | accessible | atlas de feuilles téléchargé |
+| quaternius.com, itch.io | accessibles | pages et licence consultées |
+| drive.google.com (lien de téléchargement officiel Quaternius) | « Quota exceeded » | personnages récupérés depuis une copie publique du pack sur raw.githubusercontent.com (dépôt `osman-1002/3D-3rd-Person-Godot-Game-With-GenAI-Integration`, dossier `addons/Ultimate Modular Men- Feb 2022/`), qui contient le `License.txt` CC0 d'origine. L'identité octet par octet avec le fichier officiel n'a pas pu être vérifiée. |
+| kenney.nl, poly.pizza, github.com (pages web, codeload) | refusés (403) | non utilisés |
+
+## Ressources générées par le code du projet
+Pas d'équivalent libre adapté trouvé, donc fait en code (licence du projet) :
+- façades haussmanniennes : travées, moulures, balcons en fer forgé, rez-de-chaussée et **enseignes inventées**, toits en zinc (`src/client/textures.ts`, `decor.ts`), enrichies des normales photographiques de `beige_wall_001` ;
+- socle du monument, barrières, colonne d'affichage et **affiches fictives**, plaques de rue aux **noms inventés** ;
+- ambiance sonore et bruits de pas, synthétisés en direct (`src/client/son.ts`) : aucun fichier audio.
 
 ## Code
 Code original. Aucun code copié d'Hémicycle (seulement des principes, voir `AUDIT-HEMICYCLE.md`). Licence du projet : à choisir par le propriétaire (aucune pour l'instant = tous droits réservés).
 
 ## Contenu
-Pas de logos, insignes, uniformes exacts, noms d'unités ni personnes réelles. Lieu « inspiré de » : volumes stylisés, aucune photo ni texture issue de cartes ou d'images protégées.
+Pas de logos, insignes, uniformes exacts, noms d'unités ni personnes réelles. Lieu « inspiré de » : aucune photo ni texture issue de cartes ou d'images protégées. La statue est une figure allégorique générique, pas la statue réelle de la place de la République.

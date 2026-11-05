@@ -3,3 +3,4 @@ dist/
 *.log
 e2e/captures/
 dist-serveur/
+assets-sources/

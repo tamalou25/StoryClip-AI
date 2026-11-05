@@ -181,7 +181,11 @@ export class ClientReseau {
   /** Reprend la session mémorisée (après rechargement de la page). Renvoie false s'il n'y en a pas. */
   reprendre(): boolean {
     if (!this.session) return false;
-    this.ouvrir({ t: 'reprendre', v: VERSION_PROTOCOLE, code: this.session.code, jeton: this.session.jeton });
+    // Traitée comme une reconnexion : si le serveur ne répond pas tout de suite, on réessaie
+    // tant que la place peut être réservée, au lieu d'afficher « serveur indisponible ».
+    this.arreterReconnexion();
+    this.reconnexion = { debut: this.maintenant(), essais: 0, minuteur: null };
+    this.connecter([JSON.stringify({ t: 'reprendre', v: VERSION_PROTOCOLE, code: this.session.code, jeton: this.session.jeton })], true);
     return true;
   }
 
@@ -311,7 +315,8 @@ export class ClientReseau {
     // Certaines piles (Node 22, navigateurs mobiles) signalent un échec d'ouverture par `error` sans
     // jamais émettre `close`, ou restent bloquées en connexion : on traite les deux cas nous-mêmes.
     const echecOuverture = () => {
-      if (this.socket !== s || this.aEteOuverte) return;
+      // Socket déjà ouverte mais événement `open` pas encore traité (fil principal bloqué) : pas un échec.
+      if (this.socket !== s || this.aEteOuverte || s.readyState === OUVERT) return;
       this.detacher();
       try { s.close(); } catch { /* jamais ouverte */ }
       this.surFermeture(1006, reprise);
@@ -403,8 +408,15 @@ export class ClientReseau {
     this.arreterMinuteurs();
     this.minuteurOuverture = null;
     this.minuteurs.push(setInterval(() => this.envoyer({ t: 'ping', c: this.maintenant() }), PERIODE_PING));
+    let veille = this.maintenant();
     this.minuteurs.push(setInterval(() => {
-      if (this.socket && this.aEteOuverte && this.maintenant() - this.dernierMessage > SILENCE_MAX) this.couper();
+      const t = this.maintenant();
+      // Le chien de garde lui-même a été retardé : le fil principal était bloqué (image très longue,
+      // onglet gelé). Les messages reçus pendant ce temps attendent encore d'être traités : on ne
+      // conclut rien et on repart de maintenant.
+      if (t - veille > 2500) this.dernierMessage = t;
+      veille = t;
+      if (this.socket && this.aEteOuverte && t - this.dernierMessage > SILENCE_MAX) this.couper();
     }, 1000));
   }
 
@@ -484,11 +496,11 @@ export class ClientReseau {
         break;
       case 'erreur':
         if (m.fatal && (m.code === 'jeton' || m.code === 'introuvable') && this.reconnexion) {
-          // La reprise a échoué : la place n'existe plus.
+          // La reprise a échoué : la place n'existe plus (délai dépassé, salon fermé). Message du serveur.
           this.arreterReconnexion();
           this.oublierSession();
           this.fermer();
-          this.erreur('perdue', true);
+          this.evenements.erreur?.(m.code, m.message, true);
           return;
         }
         if (m.fatal) {

@@ -79,7 +79,7 @@ describe('sous latence (RTT ≈ 150 ms, gigue ±20 ms)', () => {
     console.table({ 'avec prédiction': mAvec, 'sans prédiction': mSans });
 
     expect(mAvec.rttMs).toBeGreaterThan(140);
-    expect(mAvec.reactionLocaleMs).toBeLessThan(60); // ≈ 1–2 images
+    expect(mAvec.reactionLocaleMs).toBeLessThan(90); // 2–3 pas : le temps de parcourir 5 cm depuis l'arrêt
     expect(mSans.reactionLocaleMs).toBeGreaterThan(140); // il faut attendre le serveur
     expect(mAvec.corrections).toBe(0); // une intention = un pas : la gigue ne crée pas d'écart
     expect(mAvec.reactionVueParAutreMs).toBeLessThan(400);

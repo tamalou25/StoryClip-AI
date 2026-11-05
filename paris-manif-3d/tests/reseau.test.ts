@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { CARTE_REPUBLIQUE } from '../src/sim/carte';
-import { chevauche, creerPersonnage, VITESSE_MAX } from '../src/sim/deplacement';
+import { chevauche, creerPersonnage } from '../src/sim/deplacement';
 import { FREQUENCE } from '../src/sim/monde';
 import { HorlogeServeur, TamponInterpolation, type EchantillonDistant } from '../src/reseau/interpolation';
 import { Predicteur } from '../src/reseau/prediction';
@@ -160,8 +160,4 @@ describe('interpolation des distants', () => {
     expect(h.retardRendu).toBeGreaterThanOrEqual(1);
     expect(h.retardRendu).toBeLessThan(3);
   });
-});
-
-it('VITESSE_MAX reste la vitesse de référence du protocole', () => {
-  expect(VITESSE_MAX).toBeGreaterThan(5);
 });

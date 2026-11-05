@@ -92,8 +92,8 @@ describe('validation des messages', () => {
       if (v !== undefined) vMax = Math.max(vMax, v);
       await pause(33);
     }
-    expect(vMax).toBeGreaterThan(5);
-    expect(vMax).toBeLessThanOrEqual(VITESSE_MAX + 0.05);
+    expect(vMax).toBeGreaterThan(VITESSE_MAX * 0.9); // court vraiment…
+    expect(vMax).toBeLessThanOrEqual(VITESSE_MAX + 0.05); // …mais jamais plus vite que la course normale
     // Rejouer d'anciens numéros ou en envoyer en rafale ne fait pas avancer plus vite.
     const x0 = hote.c.dernierEtat!.j[idTriche]![0];
     for (let i = 0; i < 50; i++) triche.ws.send(JSON.stringify({ t: 'i', s: 1, dx: -1, dz: 0, a: false }));

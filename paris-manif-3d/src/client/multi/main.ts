@@ -13,7 +13,9 @@ import { FREQUENCE } from '../../sim/monde';
 import { creerCamera as creerEtatCamera, directionMonde, distanceCible, DISTANCE, lisserDistance, majCamera, poseCamera } from '../camera';
 import { Commandes } from '../commandes';
 import { construireDecor } from '../decor';
+import { passant } from '../personnage';
 import { creerApplication, creerCamera, type Qualite } from '../rendu';
+import { chargerRessources, type Ressources } from '../ressources';
 import { SceneMulti } from './scene';
 
 const ROTATION_CLAVIER = 2.2;
@@ -92,9 +94,33 @@ const client = new ClientReseau({
 // ——— Rendu ———
 const canvas = el<HTMLCanvasElement>('scene');
 const app = creerApplication(canvas, qualite);
-const ambiance = construireDecor(app, carte, qualite);
+app.start();
+// Ressources (textures, modèles, ciel) chargées avant la scène ; créer/rejoindre attend la fin.
+$.creer.disabled = true;
+$.rejoindre.disabled = true;
+const texteCreer = $.creer.textContent;
+let res: Ressources;
+try {
+  res = await chargerRessources(app, qualite, (p) => { $.creer.textContent = `Chargement… ${Math.round(p * 100)} %`; });
+} catch (e) {
+  $.creer.textContent = 'Chargement impossible';
+  $.erreur.hidden = false;
+  $.erreur.textContent = 'Les ressources du jeu n’ont pas pu être chargées. Rechargez la page.';
+  throw e;
+}
+$.creer.textContent = texteCreer;
+$.creer.disabled = false;
+$.rejoindre.disabled = false;
+construireDecor(app, carte, qualite, res);
+const TEINTES_PASSANTS: Record<string, string>[] = [
+  { Red_Dark: '#6b3a32', LightBrown: '#3b3a3f' },
+  { Red_Dark: '#2f4560', LightBrown: '#4a4036' },
+  { Red_Dark: '#b9a27a', LightBrown: '#2a2e36' },
+  { Red_Dark: '#3e4a3a', LightBrown: '#5a4a3a' },
+];
+for (const p of carte.passants) passant(app, res.passant, p.x, p.z, p.regard, TEINTES_PASSANTS[p.variante % TEINTES_PASSANTS.length]!, (p.variante * 0.37) % 1);
 const { entite: cameraEntite } = creerCamera(app, qualite);
-const scene = new SceneMulti(app, el('etiquettes'), qualite === 'haute');
+const scene = new SceneMulti(app, el('etiquettes'), res.manifestant);
 const commandes = new Commandes(el('commandes'));
 
 let camera = creerEtatCamera(-Math.PI / 2);
@@ -369,7 +395,6 @@ app.on('update', (dtMoteur: number) => {
   const p = poseCamera(pose.x, pose.z, camera.lacet, carte.obstacles, distanceCamera);
   cameraEntite.setPosition(p.position.x, p.position.y, p.position.z);
   cameraEntite.lookAt(p.cible.x, p.cible.y, p.cible.z);
-  ambiance.ciel.setPosition(p.position.x, 0, p.position.z);
   scene.majEtiquettes(cameraEntite.camera!);
 
   if (client.etatConnexion === 'en_ligne' && client.rtt > 0) $.reseau.textContent = `${Math.round(client.rtt)} ms`;
@@ -391,9 +416,7 @@ const codeUrl = parametres.get('code');
 if (codeUrl) $.code.value = normaliserCode(codeUrl) ?? '';
 montrer('accueil');
 if (client.reprendre()) $.bandeau.hidden = true; // rechargement de page : on reprend sa place
-else if (codeUrl) $.nom.focus();
 else $.nom.focus();
-app.start();
 
 // Crochet de test (?test=1) : lecture seule de l'état, plus quelques actions de pilotage.
 if (parametres.get('test') === '1') {

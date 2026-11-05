@@ -3,11 +3,16 @@
 
 import * as pc from 'playcanvas';
 import type { Camp, EtatObjectif, ObjectifVue, ParticipantVue } from '../../reseau/protocole';
-import { Personnage3D, TENUE_MANIFESTANT, type Tenue } from '../personnage';
+import { Personnage3D } from '../personnage';
 
-/** Tenue fictive sombre, sans insigne. */
-export const TENUE_FORCES: Tenue = { veste: '#2f3d55', pantalon: '#242b37', chaussures: '#16181c', peau: '#b98563', cheveux: '#1d1712' };
-const TENUES: Record<Camp, Tenue> = { manifestants: TENUE_MANIFESTANT, forces: TENUE_FORCES };
+/**
+ * Teintes du modèle de personnage par camp (matériaux nommés du glTF, voir src/client/main.ts) :
+ * manifestants comme en solo, forces de l'ordre en tenue sombre fictive, sans insigne.
+ */
+const TEINTES: Record<Camp, Record<string, string>> = {
+  manifestants: { Purple: '#3c4350', LightBlue: '#2a3346', White: '#d9d5cc' },
+  forces: { Purple: '#1d2633', LightBlue: '#141a22', White: '#5d6672' },
+};
 
 const COULEURS: Record<EtatObjectif, [number, number, number]> = {
   0: [0.75, 0.75, 0.72],
@@ -29,13 +34,13 @@ export class SceneMulti {
   private readonly ecran = new pc.Vec3();
   private readonly monde = new pc.Vec3();
 
-  constructor(private readonly app: pc.Application, private readonly calque: HTMLElement, private readonly ombres: boolean) {}
+  constructor(private readonly app: pc.Application, private readonly calque: HTMLElement, private readonly modele: pc.ContainerResource) {}
 
   /** (Re)crée les personnages et objectifs d'une partie ; aucun reste de la partie précédente. */
   preparer(participants: readonly ParticipantVue[], objectifs: readonly ObjectifVue[], monId: string | null): void {
     this.vider();
     for (const p of participants) {
-      const modele = new Personnage3D(this.app, TENUES[p.camp], this.ombres || p.id === monId);
+      const modele = new Personnage3D(this.app, this.modele, TEINTES[p.camp]);
       const etiquette = document.createElement('span');
       etiquette.className = `etiquette ${p.camp}`;
       etiquette.textContent = p.nom;
