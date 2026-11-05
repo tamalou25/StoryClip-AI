@@ -15,7 +15,7 @@
 | Moteur 3D | PlayCanvas Engine (sans éditeur) | 2.23.3 | WebGL2/WebGPU, léger sur mobile, MIT, API code seule |
 | Tests | Vitest | 5.0.5 | Même config que Vite |
 | Navigateur | @playwright/test | 1.63.0 | Aligné sur le Chromium préinstallé de l'environnement |
-| Réseau (incrément 4) | Node 22 + Colyseus | 0.18.x (`colyseus` 0.18.9, `@colyseus/sdk` 0.18.5 au 05/11/2026) | Salons, matchmaking privé, reconnexion intégrés ; **non installé** tant que l'incrément 4 n'a pas commencé |
+| Réseau (incrément 4) | ~~Node 22 + Colyseus~~ → Node 22 + `ws` | `ws` 8.22.0 | **Remplacé par l'[ADR 0002](0002-reseau-ws.md)** (versions Colyseus trop mouvantes, synchronisation non alignée sur le pas fixe) |
 
 Versions choisies : dernière version stable publiée depuis au moins deux semaines (vérifié sur le registre npm le 05/11/2026). Toutes exactes (`save-exact`).
 

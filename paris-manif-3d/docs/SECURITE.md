@@ -1,27 +1,29 @@
-# Sécurité, réseau et confort (plan)
+# Sécurité, réseau et confort
 
 ✅ = en place, ⬜ = prévu (incrément indiqué).
 
 ## Messages et autorité
 - ✅ Intention validée : objet simple, clés connues seulement, nombres finis, longueur ramenée à 1 (`src/sim/intention.ts`, testé).
 - ✅ Le client ne transmet jamais position ni score ; la simulation calcule tout (`src/sim/`).
-- ⬜ (4) Taille maximale des messages (ex. 256 octets), rejet + compteur, déconnexion après abus.
-- ⬜ (4) Une intention par pas et par joueur au maximum ; surplus ignoré.
+- ✅ Taille maximale des messages : 512 octets (`maxPayload`, fermeture 1009) ; messages invalides avertis puis expulsion (4002) au-delà de 20 en 10 s ; validation clé par clé (`src/reseau/protocole.ts`). Testé (`server/tests/securite.test.ts`).
+- ✅ Une intention appliquée par pas et par joueur ; numéro déjà vu ignoré (rejeu), file bornée (8 visés, 16 max), longueur ramenée à 1 par le serveur. Testé (intention de longueur 50, rafale de rejeux).
 - ⬜ (5) Temps de recharge et équipements vérifiés côté serveur.
 
+- ✅ Socket morte (ping WebSocket sans réponse) coupée en ≤ 10 s ; client trop lent (> 256 Ko en attente) déconnecté ; une exception dans un salon ne ferme que ce salon.
+
 ## Limites de fréquence
-- ⬜ (7) Connexions et créations de salon par IP (fenêtre glissante).
-- ⬜ (7) Actions par joueur (déjà bornées par la simulation à pas fixe).
+- ✅ Connexions simultanées, créations de salon et tentatives de « rejoindre / reprendre » par IP (fenêtres glissantes, `PM3D_*`). Derrière un proxy : dernière entrée de `X-Forwarded-For` seulement. Testé.
+- ✅ Seau à jetons par connexion (60 messages, 40/s ; messages de salon 10, 3/s) ; expulsion (4008) au-delà de 100 refus en 10 s. Testé.
 
 ## Salons
-- ⬜ (7) Privés, code aléatoire non devinable, expiration, suppression des salons vides, 4 joueurs max, 8 bots max au total.
-- ⬜ (7) Départ d'un joueur : remplacé par un bot, la partie continue ; reconnexion limitée dans le temps.
+- ✅ Privés, code de 5 caractères tiré par `crypto.randomInt` (33,5 M de combinaisons, tentatives limitées par IP), suppression des salons vides, 4 joueurs max, bots de complément jusqu'à égalité d'effectif (3 au plus). Une connexion n'agit que sur son salon. Testé (isolation de 4 salons).
+- ✅ Départ ou délai dépassé : remplacé par un bot jusqu'à la fin, la partie continue ; reconnexion par jeton de 128 bits (comparé à temps constant) pendant `PM3D_GRACE_S` (30 s). Testé. Détails : [RESEAU.md](RESEAU.md).
 
 ## Données
-- ⬜ (7) Pseudonyme : texte non fiable, longueur bornée, affiché via `textContent` uniquement, jamais en HTML.
-- ✅ Aucun secret dans le client (aucun n'existe). ⬜ Secrets serveur en variables d'environnement.
-- ⬜ (7) Production : `wss://` (TLS) uniquement, origine vérifiée.
-- ⬜ Journaux minimaux : événements de salon, erreurs ; ni pseudonyme complet ni IP en clair au-delà du nécessaire.
+- ✅ Pseudonyme : NFC, caractères de contrôle / bidi / invisibles retirés, 16 caractères, dédoublonné, affiché via `textContent` uniquement (vérifié dans le navigateur avec `Bob <b>`).
+- ✅ Aucun secret dans le client ni sur le serveur (aucun n'est nécessaire) ; configuration par variables d'environnement.
+- 🟡 Origine vérifiée si `PM3D_ORIGINES` est défini (testé) — **à définir en production**. `wss://` : le client l'utilise automatiquement sur une page `https://` ; TLS à fournir par le proxy de l'hébergeur (non testé, pas encore déployé).
+- ✅ Journaux minimaux : une ligne JSON par événement de salon, identifiants de place (`j1`…) seulement, ni pseudonyme ni IP.
 
 ## Confort
 - ✅ Pas de flash ni de secousse ; `prefers-reduced-motion` respecté pour les boutons.

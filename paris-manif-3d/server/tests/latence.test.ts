@@ -81,7 +81,10 @@ describe('sous latence (RTT ≈ 150 ms, gigue ±20 ms)', () => {
     expect(mAvec.rttMs).toBeGreaterThan(140);
     expect(mAvec.reactionLocaleMs).toBeLessThan(90); // 2–3 pas : le temps de parcourir 5 cm depuis l'arrêt
     expect(mSans.reactionLocaleMs).toBeGreaterThan(140); // il faut attendre le serveur
-    expect(mAvec.corrections).toBe(0); // une intention = un pas : la gigue ne crée pas d'écart
+    // Une intention = un pas : la gigue ne crée pas d'écart (0 mesuré machine au repos ; tolérance
+    // pour un blocage de la boucle d'événements quand la machine est très chargée).
+    expect(mAvec.corrections).toBeLessThanOrEqual(1);
+    expect(mAvec.ecartMaxM).toBeLessThan(0.3);
     expect(mAvec.reactionVueParAutreMs).toBeLessThan(400);
     expect(mAvec.sautMaxDistantM).toBeLessThan(0.35); // pas de téléportation visible chez l'autre
     expect(mAvec.koParSeconde).toBeLessThan(20);

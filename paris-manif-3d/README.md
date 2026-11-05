@@ -2,7 +2,9 @@
 
 Jeu web 3D stylisé : manifestants contre forces de l'ordre, parties de 5 min sur une place compacte inspirée de la place de la République. Mobile (Android, iPhone) et ordinateur.
 
-**État : incrément 2b (ressources réelles)** — place haussmannienne avec textures photographiques PBR (Poly Haven), candélabres, bancs et statue en modèles 3D réels, platanes en feuillage réel (ambientCG), ciel HDRI qui éclaire la scène, personnage humain animé (Quaternius : repos, marche, course, salut) et passants. Toutes les ressources sont stockées dans `public/ressources/` (aucun lien externe au lancement) et sont CC0 — voir `docs/LICENCES.md`. Pas encore de camps, de bots, d'objectifs ni de réseau.
+**État : incrément 2b (ressources réelles)** — place haussmannienne avec textures photographiques PBR (Poly Haven), candélabres, bancs et statue en modèles 3D réels, platanes en feuillage réel (ambientCG), ciel HDRI qui éclaire la scène, personnage humain animé (Quaternius : repos, marche, course, salut) et passants. Toutes les ressources sont stockées dans `public/ressources/` (aucun lien externe au lancement) et sont CC0 — voir `docs/LICENCES.md`.
+
+**Multijoueur (incréments 4 et 7)** — salons privés de 2 à 4 joueurs (`multi.html`) : code court, nom, camp, préparation, partie partagée (objectifs, scores, minuteur, résultat calculés par le serveur), revanche, reconnexion. Serveur Node autoritaire, règles provisoires en attendant le raccordement aux règles complètes. Détails : [docs/RESEAU.md](docs/RESEAU.md).
 
 ## Lancer
 
@@ -13,6 +15,15 @@ npm test           # Vitest : simulation, collisions, caméra, validation des in
 npm run build      # vérification TypeScript + build de production dans dist/
 npm run test:e2e   # fumée Playwright (après build) : clavier seul + émulation mobile multitouch
 ```
+
+Multijoueur (deux terminaux) :
+```bash
+npm run serveur    # serveur de jeu : ws://localhost:2567/ws
+```
+```bash
+npm run dev        # puis http://localhost:5173/multi.html (Vite relaie /ws vers le serveur)
+```
+Production locale (un seul processus) : `npm run build && npm run serveur:build && PM3D_STATIQUE=dist npm run serveur:start` → `http://localhost:2567/multi.html`. Test navigateur à trois Chromium : `npm run test:multi` (après les deux builds). Variables, ports, Docker : `docs/RESEAU.md`.
 
 Ressources tierces (déjà versionnées ; à relancer seulement pour les régénérer) :
 ```bash
@@ -39,9 +50,11 @@ Aucune souris, aucun survol, aucun verrouillage du pointeur requis. La caméra s
 
 ```
 src/sim/      simulation pure (aucun DOM) : carte, déplacement + collisions, intentions, monde à pas fixe 30 Hz
-src/client/   rendu PlayCanvas, caméra (logique pure dans camera.ts), commandes, menu/pause
+src/reseau/   multijoueur pur (navigateur + Node) : protocole validé, adaptateur de règles, prédiction, interpolation, client
+src/client/   rendu PlayCanvas, caméra (logique pure dans camera.ts), commandes, menu/pause ; multi/ = page salon privé
+server/       serveur de jeu Node (ws) : salons, limites, reconnexion ; server/tests/ = tests multi-clients
 tests/        Vitest
-e2e/          test de fumée Playwright
+e2e/          tests navigateur Playwright (fumée solo, multijoueur à trois navigateurs)
 docs/         audit, décisions, roadmap, budget, licences, sécurité
 ```
 
@@ -52,6 +65,8 @@ docs/         audit, décisions, roadmap, budget, licences, sécurité
 - [Roadmap et estimation](docs/ROADMAP.md)
 - [Budget](docs/BUDGET.md)
 - [Licences et provenance](docs/LICENCES.md)
-- [Sécurité et réseau (plan)](docs/SECURITE.md)
+- [ADR 0002 — réseau (`ws` plutôt que Colyseus)](docs/adr/0002-reseau-ws.md)
+- [Multijoueur : lancement, protocole, comportements, tests, raccordements](docs/RESEAU.md)
+- [Sécurité et réseau](docs/SECURITE.md)
 
 Contenu : simulation de jeu fictive, sans personne, unité ni insigne réels ; effets non réalistes (« gaz fictif »).

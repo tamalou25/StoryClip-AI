@@ -19,7 +19,7 @@ mkdirSync(CAPTURES, { recursive: true });
 
 const serveur = EXTERNE ? null : spawn('node', ['dist-serveur/index.js'], {
   stdio: ['ignore', 'pipe', 'inherit'],
-  env: { ...process.env, PM3D_PORT: String(PORT), PM3D_HOTE: '127.0.0.1', PM3D_STATIQUE: 'dist', PM3D_DUREE_PARTIE_S: '240', PM3D_COMPTE_S: '1', PM3D_GRACE_S: '15' },
+  env: { ...process.env, PM3D_PORT: String(PORT), PM3D_HOTE: '127.0.0.1', PM3D_STATIQUE: 'dist', PM3D_DUREE_PARTIE_S: '300', PM3D_COMPTE_S: '1', PM3D_GRACE_S: '15' },
 });
 const journalServeur = [];
 serveur?.stdout.on('data', (d) => journalServeur.push(...String(d).trim().split('\n')));
@@ -102,6 +102,11 @@ async function principal() {
   verifier(await A.isVisible('#bouton-lancer') && !(await B.isVisible('#bouton-lancer')), 'seul l’hôte voit « Lancer la partie »');
   verifier(await A.isDisabled('#bouton-lancer'), 'lancement impossible tant que personne n’est prêt');
 
+  // Pages des essais d'erreurs chargées dès maintenant : leur démarrage (très lent en rendu
+  // logiciel) ne doit pas consommer le temps de la partie.
+  const C = await ouvrir(ctxC, 'Chloé');
+  const D = await ouvrir(await navigateurs[2].newContext({ viewport: { width: 640, height: 400 } }), 'Hors ligne', `${PAGE}&serveur=ws://127.0.0.1:1/ws`);
+
   console.log('— 2. Préparation et départ —');
   await B.click('#bouton-pret');
   await jusqua(A, (e) => e.joueurs.find((j) => j.nom.startsWith('Bob'))?.pret === true, 10000, 'A voit B prêt');
@@ -115,7 +120,6 @@ async function principal() {
   verifier(await A.isVisible('#hud') && await B.isVisible('#hud'), 'HUD (scores, minuteur, objectifs) affiché');
 
   console.log('— 3. Erreurs compréhensibles (pendant la partie) —');
-  const C = await ouvrir(ctxC, 'Chloé');
   await C.fill('#champ-code', code);
   await C.click('#bouton-rejoindre');
   const eC1 = await jusqua(C, (e) => e.erreur !== null, 10000, 'erreur partie commencée');
@@ -127,7 +131,6 @@ async function principal() {
   await C.fill('#champ-code', 'AB');
   await C.click('#bouton-rejoindre');
   verifier(/Code invalide/.test(await C.textContent('#erreur')), 'code mal saisi signalé avant tout envoi');
-  const D = await ouvrir(ctxC, 'Hors ligne', `${PAGE}&serveur=ws://127.0.0.1:1/ws`);
   await D.click('#bouton-creer');
   const eD = await jusqua(D, (e) => e.erreur !== null, 15000, 'serveur indisponible');
   verifier(/Serveur indisponible/.test(eD.erreur ?? ''), 'serveur indisponible', eD.erreur);
@@ -187,7 +190,7 @@ async function principal() {
 
   console.log('— 6. Même résultat chez les deux —');
   console.log(`   (temps restant : ${(await etat(A)).restant / 30 | 0} s — attente de la fin)`);
-  const finA = await jusqua(A, (e) => e.phase === 'resultats' && e.resultat !== null, 260000, 'fin A');
+  const finA = await jusqua(A, (e) => e.phase === 'resultats' && e.resultat !== null, 320000, 'fin A');
   const finB = await jusqua(B, (e) => e.phase === 'resultats' && e.resultat !== null, 10000, 'fin B');
   verifier(JSON.stringify(finA.resultat) === JSON.stringify(finB.resultat), 'résultat identique chez A et B', JSON.stringify(finA.resultat?.scores));
   verifier(await A.isVisible('#ecran-resultats') && await B.isVisible('#ecran-resultats'), 'écran de résultats affiché');
