@@ -372,11 +372,16 @@ export async function demarrerServeur(partiel: Partial<OptionsServeur> = {}): Pr
   };
 }
 
-function adresse(req: IncomingMessage, confianceProxy: boolean): string {
+/**
+ * Adresse du client pour les limites par IP. Derrière UN proxy inverse de confiance, on prend la
+ * DERNIÈRE entrée de X-Forwarded-For (celle ajoutée par ce proxy) : les précédentes viennent du
+ * client et sont falsifiables.
+ */
+export function adresse(req: Pick<IncomingMessage, 'headers' | 'socket'>, confianceProxy: boolean): string {
   if (confianceProxy) {
     const xff = req.headers['x-forwarded-for'];
-    const premiere = (Array.isArray(xff) ? xff[0] : xff)?.split(',')[0]?.trim();
-    if (premiere) return premiere;
+    const derniere = (Array.isArray(xff) ? xff.join(',') : xff)?.split(',').map((x) => x.trim()).filter(Boolean).at(-1);
+    if (derniere) return derniere;
   }
   return req.socket.remoteAddress ?? 'inconnue';
 }

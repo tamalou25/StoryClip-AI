@@ -51,15 +51,20 @@ export interface OptionsSalon {
 }
 
 /** Intentions en attente par joueur : au-delà, les plus anciennes sont abandonnées. */
-const FILE_MAX = 8;
-/** File visée : au-delà, l'intention la plus ancienne est écartée (client plus rapide que le serveur). */
-const FILE_CIBLE = 4;
+const FILE_MAX = 16;
 /**
- * Intention en retard (gigue) : le personnage est figé au plus FIGE_MAX ticks en l'attendant, au lieu de
+ * File visée (≈ 270 ms) : au-delà, l'intention la plus ancienne est écartée. Absorbe sans perte les
+ * rafales d'un appareil lent (jusqu'à 8 pas envoyés par image, soit ~4 i/s), et borne le retard si
+ * le client envoie durablement plus vite que le serveur ne consomme.
+ */
+const FILE_CIBLE = 8;
+/**
+ * Intention en retard (gigue, appareil lent) : le personnage est figé au plus FIGE_MAX ticks (≈ 330 ms)
+ * en l'attendant, au lieu de
  * répéter la précédente. Une intention = un pas, toujours : la prédiction du client reste exacte.
  * Au-delà (client muet), on applique l'intention neutre : le personnage s'arrête.
  */
-const FIGE_MAX = 6;
+const FIGE_MAX = 10;
 
 export class Siege {
   pret = false;
@@ -242,17 +247,19 @@ export class Salon {
       const regles = this.options.regles;
       const intentions: Record<string, Intention> = {};
       const figes = new Set<string>();
+      const automatiques = new Set<string>();
       for (const p of this.participants) {
+        if (p.bot) continue; // bots de complément : pilotés par les règles
         const s = this.sieges.get(p.id);
         if (s && s.connexion && !s.parti) {
           const i = this.prendreIntention(s);
           if (i) intentions[p.id] = i;
           else figes.add(p.id);
         } else {
-          intentions[p.id] = regles.intentionBot(this.etatJeu, p.id);
+          automatiques.add(p.id); // absent : l'IA des règles prend le relais
         }
       }
-      this.etatJeu = regles.etape(this.etatJeu, intentions, figes);
+      this.etatJeu = regles.etape(this.etatJeu, intentions, { figes, automatiques });
       this.diffuserEtats();
       const fin = regles.resultat(this.etatJeu);
       if (fin) this.terminer(fin);

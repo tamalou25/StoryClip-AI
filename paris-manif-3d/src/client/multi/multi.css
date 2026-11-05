@@ -1,0 +1,118 @@
+/* Compléments de style pour le mode salon privé (multi.html). Le style commun reste dans ../style.css. */
+
+:root {
+  --camp-m: #e0a43a;
+  --camp-f: #5b8fd9;
+  --conteste: #e2574c;
+}
+
+.menu input, .menu button { -webkit-user-select: text; user-select: text; }
+.ecran[hidden], .bouton-menu[hidden], .menu [hidden] { display: none; }
+
+.champ { display: grid; gap: 6px; margin: 0 0 12px; font-size: 13px; color: var(--encre-douce); }
+.champ input {
+  min-height: 46px; padding: 0 14px;
+  border-radius: 12px; border: 1px solid var(--trait);
+  background: rgb(255 255 255 / 0.07); color: var(--encre);
+  font: 600 17px var(--sans);
+}
+#champ-code { letter-spacing: 0.25em; text-transform: uppercase; }
+.champ input:focus-visible { outline: 3px solid #ffd27a; outline-offset: 1px; }
+
+.choix-camp { display: flex; gap: 8px; margin: 0 0 14px; padding: 0; border: 0; }
+.choix-camp legend { padding: 0 0 6px; font-size: 13px; color: var(--encre-douce); }
+.choix-camp label { flex: 1; }
+.choix-camp input { position: absolute; opacity: 0; pointer-events: none; }
+.choix-camp span {
+  display: grid; place-items: center; min-height: 44px; padding: 0 8px;
+  border-radius: 12px; border: 1px solid var(--trait);
+  background: rgb(255 255 255 / 0.05); font-weight: 600; font-size: 14px; cursor: pointer; text-align: center;
+}
+.choix-camp input[value='manifestants']:checked + span { border-color: var(--camp-m); background: rgb(224 164 58 / 0.22); }
+.choix-camp input[value='forces']:checked + span { border-color: var(--camp-f); background: rgb(91 143 217 / 0.22); }
+.choix-camp input:focus-visible + span { outline: 3px solid #ffd27a; outline-offset: 1px; }
+
+.rejoindre { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--trait); }
+.rejoindre .champ { margin: 0; }
+.rejoindre .bouton-menu { margin: 0; min-width: 120px; }
+
+.code-salon { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; }
+.code-salon > span { font-size: 13px; color: var(--encre-douce); }
+.code-salon strong { font: 700 30px/1 ui-monospace, 'SF Mono', Menlo, Consolas, monospace; letter-spacing: 0.18em; color: var(--accent); }
+.bouton-mini {
+  margin-left: auto; min-height: 36px; padding: 0 12px; border-radius: 10px;
+  border: 1px solid var(--trait); background: rgb(255 255 255 / 0.07); color: var(--encre);
+  font: 600 13px var(--sans); cursor: pointer;
+}
+
+.liste-joueurs { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; }
+.liste-joueurs li {
+  display: grid; grid-template-columns: 10px 1fr auto; gap: 10px; align-items: center;
+  min-height: 42px; padding: 0 12px; border-radius: 12px; background: rgb(255 255 255 / 0.05);
+}
+.liste-joueurs .nom { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.liste-joueurs .moi .nom::after { content: ' (vous)'; font-weight: 400; color: var(--encre-douce); }
+.liste-joueurs .etat { font-size: 13px; color: var(--encre-douce); }
+.liste-joueurs .etat.pret { color: #8fd18b; }
+.liste-joueurs .absent { opacity: 0.55; }
+.pastille { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #888; }
+.manifestants .pastille, .pastille.manifestants { background: var(--camp-m); }
+.forces .pastille, .pastille.forces { background: var(--camp-f); }
+
+.etat-attente { min-height: 1.4em; margin: 2px 0 10px; font-size: 14px; color: var(--encre-douce); }
+.erreur { margin: 10px 0 0; padding: 10px 12px; border-radius: 12px; background: rgb(226 87 76 / 0.18); border: 1px solid rgb(226 87 76 / 0.5); font-size: 14px; }
+.bouton-menu[aria-pressed='true'] { background: rgb(143 209 139 / 0.25); border-color: #8fd18b; }
+.bouton-menu:disabled { opacity: 0.5; cursor: default; }
+
+.titre-resultat { margin: 0 0 4px; font: 600 26px/1.15 var(--serif); }
+.scores-resultat { margin: 0 0 10px; color: var(--encre-douce); }
+.table-resultats { width: 100%; border-collapse: collapse; margin: 0 0 12px; font-size: 14px; }
+.table-resultats th { text-align: left; font-weight: 600; color: var(--encre-douce); font-size: 12px; padding: 4px 6px; }
+.table-resultats td { padding: 6px; border-top: 1px solid var(--trait); }
+.table-resultats td:last-child, .table-resultats th:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ——— HUD de partie ——— */
+.tableau-score {
+  display: flex; align-items: center; gap: 10px; margin: 0 auto;
+  padding: 6px 14px; border-radius: 14px; background: var(--verre);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  font-variant-numeric: tabular-nums; font-weight: 700; font-size: 18px;
+}
+.score { display: inline-flex; align-items: center; gap: 6px; }
+.minuteur { min-width: 3.2em; text-align: center; font-size: 15px; color: var(--encre-douce); }
+.objectifs { display: flex; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.objectifs li {
+  display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px;
+  background: var(--verre); border: 2px solid rgb(255 255 255 / 0.25); font-weight: 700; font-size: 13px;
+}
+.objectifs li[data-etat='1'] { border-color: var(--camp-m); background: rgb(224 164 58 / 0.35); }
+.objectifs li[data-etat='2'] { border-color: var(--camp-f); background: rgb(91 143 217 / 0.35); }
+.objectifs li[data-etat='3'] { border-color: var(--conteste); background: rgb(226 87 76 / 0.35); }
+.reseau { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--encre-douce); }
+.hud[hidden] { display: none; }
+
+.bandeau-reseau { top: calc(70px + var(--sur)); background: rgb(120 40 30 / 0.85); }
+.compte {
+  position: fixed; left: 50%; top: 38%; transform: translate(-50%, -50%); margin: 0;
+  font: 700 96px/1 var(--serif); color: var(--encre); text-shadow: 0 4px 30px rgb(0 0 0 / 0.5);
+  pointer-events: none;
+}
+
+.etiquettes { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+.etiquette {
+  position: absolute; left: 0; top: 0; padding: 2px 8px; border-radius: 8px;
+  background: rgb(20 23 27 / 0.6); color: var(--encre); font-size: 12px; font-weight: 600; white-space: nowrap;
+  border-bottom: 2px solid #888;
+}
+.etiquette.manifestants { border-color: var(--camp-m); }
+.etiquette.forces { border-color: var(--camp-f); }
+.etiquette.absent { opacity: 0.6; font-style: italic; }
+
+@media (max-width: 640px) {
+  .objectifs, .reseau { display: none; }
+}
+@media (max-height: 460px) {
+  .liste-joueurs li { min-height: 34px; }
+  .code-salon strong { font-size: 24px; }
+  .table-resultats { font-size: 13px; }
+}

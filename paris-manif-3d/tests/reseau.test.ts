@@ -68,18 +68,18 @@ describe('règles provisoires (zones)', () => {
   it('objectifs et départs hors des obstacles, dans les limites', () => {
     for (const o of OBJECTIFS_REPUBLIQUE) expect(chevauche(o.x, o.z, CARTE_REPUBLIQUE)).toBe(false);
     const e = REGLES_ZONES.creer(participants, 300);
-    for (const p of Object.values(e.monde.personnages)) expect(chevauche(p.x, p.z, CARTE_REPUBLIQUE)).toBe(false);
+    for (const p of Object.values(e.personnages)) expect(chevauche(p.x, p.z, CARTE_REPUBLIQUE)).toBe(false);
   });
 
   it('un objectif tenu rapporte 1 point par seconde ; contesté, il ne rapporte rien', () => {
     let e: EtatZones = REGLES_ZONES.creer(participants, 10 * FREQUENCE);
     const o = OBJECTIFS_REPUBLIQUE[0]!;
     // On place directement les personnages (test des règles, pas du déplacement).
-    e = { ...e, monde: { ...e.monde, personnages: { ...e.monde.personnages, j1: creerPersonnage(o.x, o.z) } } };
+    e = { ...e, personnages: { ...e.personnages, j1: creerPersonnage(o.x, o.z) } };
     for (let i = 0; i < 2 * FREQUENCE; i++) e = REGLES_ZONES.etape(e, {});
     expect(REGLES_ZONES.vue(e).scores).toEqual({ manifestants: 2, forces: 0 });
     expect(REGLES_ZONES.vue(e).objectifs[0]).toBe(1);
-    e = { ...e, monde: { ...e.monde, personnages: { ...e.monde.personnages, j2: creerPersonnage(o.x + 1, o.z) } } };
+    e = { ...e, personnages: { ...e.personnages, j2: creerPersonnage(o.x + 1, o.z) } };
     for (let i = 0; i < FREQUENCE; i++) e = REGLES_ZONES.etape(e, {});
     expect(REGLES_ZONES.vue(e).objectifs[0]).toBe(3);
     expect(REGLES_ZONES.vue(e).scores.manifestants).toBe(2);
@@ -88,10 +88,8 @@ describe('règles provisoires (zones)', () => {
   it('fin, vainqueur et points par participant ; déterministe', () => {
     const jouer = () => {
       let e = REGLES_ZONES.creer([...participants, { id: 'b1', camp: 'forces', bot: true }], 20 * FREQUENCE);
-      while (!REGLES_ZONES.resultat(e)) {
-        const i = { j1: { dx: 0.3, dz: -0.2, action: false }, b1: REGLES_ZONES.intentionBot(e, 'b1'), j2: REGLES_ZONES.intentionBot(e, 'j2') };
-        e = REGLES_ZONES.etape(e, i);
-      }
+      // b1 : bot de complément ; j2 : humain absent, piloté par l'IA des règles.
+      while (!REGLES_ZONES.resultat(e)) e = REGLES_ZONES.etape(e, { j1: { dx: 0.3, dz: -0.2, action: false } }, { automatiques: new Set(['j2']) });
       return REGLES_ZONES.resultat(e)!;
     };
     const r = jouer();
@@ -102,9 +100,9 @@ describe('règles provisoires (zones)', () => {
 
   it('un personnage figé ne bouge pas pendant le pas', () => {
     const e0 = REGLES_ZONES.creer(participants, 100);
-    const e1 = REGLES_ZONES.etape(e0, { j1: { dx: 1, dz: 0, action: true }, j2: { dx: -1, dz: 0, action: false } }, new Set(['j1']));
-    expect(e1.monde.personnages.j1).toEqual(e0.monde.personnages.j1);
-    expect(e1.monde.personnages.j2!.x).toBeLessThan(e0.monde.personnages.j2!.x);
+    const e1 = REGLES_ZONES.etape(e0, { j1: { dx: 1, dz: 0, action: true }, j2: { dx: -1, dz: 0, action: false } }, { figes: new Set(['j1']) });
+    expect(e1.personnages.j1).toEqual(e0.personnages.j1);
+    expect(e1.personnages.j2!.x).toBeLessThan(e0.personnages.j2!.x);
   });
 });
 

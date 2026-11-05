@@ -1,0 +1,6 @@
+node_modules
+dist
+dist-serveur
+e2e/captures
+*.log
+.git

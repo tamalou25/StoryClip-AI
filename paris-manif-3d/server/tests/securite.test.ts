@@ -3,7 +3,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { VITESSE_MAX } from '../../src/sim/deplacement';
 import { FERMETURE, type MessageServeur } from '../../src/reseau/protocole';
-import type { ServeurJeu } from '../serveur';
+import { adresse, type ServeurJeu } from '../serveur';
 import { attendre, client, fermerTous, lancer, pause, piloter, salonAvec, serveurDeTest, socketBrute } from './outils';
 
 let serveur: ServeurJeu;
@@ -130,6 +130,13 @@ describe('limites par adresse et origine', () => {
     expect(codes.filter((m) => m.t === 'erreur' && m.code === 'limite')).toHaveLength(1);
     for (const s of ouvertes) s.ws.close();
     await petit.fermer();
+  });
+
+  it('derrière un proxy de confiance, seule la dernière adresse de X-Forwarded-For compte', () => {
+    const req = (xff: string | undefined) => ({ headers: xff ? { 'x-forwarded-for': xff } : {}, socket: { remoteAddress: '10.0.0.2' } }) as never;
+    expect(adresse(req('1.1.1.1, 203.0.113.7'), true)).toBe('203.0.113.7'); // 1.1.1.1 : falsifié par le client
+    expect(adresse(req('203.0.113.7'), false)).toBe('10.0.0.2'); // sans confiance : l'en-tête est ignoré
+    expect(adresse(req(undefined), true)).toBe('10.0.0.2');
   });
 
   it('origine vérifiée quand PM3D_ORIGINES est défini', async () => {

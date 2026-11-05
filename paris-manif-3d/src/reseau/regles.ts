@@ -33,22 +33,29 @@ export interface ScoresFinaux {
   points: Record<string, number>;
 }
 
+/** Qui pilote quoi pendant un pas (décidé par le serveur, jamais par un client). */
+export interface ControlePas {
+  /** Humains dont l'intention n'est pas encore arrivée : ils ne bougent pas pendant ce pas. */
+  figes?: ReadonlySet<string>;
+  /** Humains absents (reconnexion en cours, partis) : pilotés par l'IA des règles pendant ce pas. */
+  automatiques?: ReadonlySet<string>;
+}
+
 export interface ReglesPartie<E> {
   readonly nom: string;
   readonly objectifs: readonly ObjectifVue[];
-  /** Nouvel état complet : aucune donnée n'est conservée d'une partie à l'autre. */
+  /** Nouvel état complet : aucune donnée n'est conservée d'une partie à l'autre. Les bots y sont déclarés. */
   creer(participants: readonly ParticipantRegles[], dureeTicks: number): E;
   /**
-   * Un pas fixe (DT). Un participant absent de `intentions` reçoit l'intention neutre.
-   * Les participants de `figes` ne bougent pas pendant ce pas (leur intention n'est pas encore arrivée) :
-   * chaque intention reçue correspond ainsi à exactement un pas, ce qui rend la prédiction exacte.
+   * Un pas fixe (DT). Un humain absent de `intentions` reçoit l'intention neutre ; les bots et les
+   * `automatiques` sont pilotés par les règles elles-mêmes (elles peuvent garder une mémoire dans E).
+   * Les `figes` ne bougent pas : chaque intention reçue correspond ainsi à exactement un pas,
+   * ce qui rend la prédiction du client exacte malgré la gigue.
    */
-  etape(etat: E, intentions: Readonly<Record<string, Intention>>, figes?: ReadonlySet<string>): E;
+  etape(etat: E, intentions: Readonly<Record<string, Intention>>, controle?: ControlePas): E;
   vue(etat: E): VueJeu;
   /** Non nul quand la partie est terminée. */
   resultat(etat: E): ScoresFinaux | null;
-  /** Intention d'un participant piloté par le serveur (bot, joueur parti ou en reconnexion). */
-  intentionBot(etat: E, id: string): Intention;
   /** Déplacement d'un personnage pour un pas : utilisé tel quel par la prédiction locale du client. */
   deplacer(p: Personnage, intention: Intention): Personnage;
 }
