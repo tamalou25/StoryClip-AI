@@ -2,7 +2,9 @@
 
 Jeu web 3D stylisé : manifestants contre forces de l'ordre, parties de 5 min sur une place compacte inspirée de la place de la République. Mobile (Android, iPhone) et ordinateur.
 
-**État : partie solo complète** — accueil → choix du camp → partie de 3 ou 5 min → résultat expliqué → revanche. Deux camps asymétriques (manifestants : tenir les zones ; forces de l'ordre : reprendre les zones ou vider la place), souffle et dispersion, rassemblement / cordon, slogan / gaz fictif, dix bots qui naviguent (A*), se coordonnent et se débloquent, trois difficultés, tutoriel interactif, HUD lisible, sons d'événements avec volumes réglables, pause / reprise / recommencer sans état résiduel. Décor haussmannien texturé, personnage animé, caméra anti-collision. Pas encore de réseau. Règles : [docs/REGLES.md](docs/REGLES.md).
+**État : partie solo complète sur ressources réelles** — accueil → choix du camp → partie de 3 ou 5 min → résultat expliqué → revanche. Deux camps asymétriques (manifestants : tenir les zones ; forces de l'ordre : reprendre les zones ou vider la place), souffle et dispersion, rassemblement / cordon, slogan / gaz fictif, dix bots qui naviguent (A*), se coordonnent et se débloquent, trois difficultés, tutoriel interactif, HUD lisible, sons d'événements avec volumes réglables, pause / reprise / recommencer sans état résiduel. Règles : [docs/REGLES.md](docs/REGLES.md).
+
+Décor : place haussmannienne avec textures photographiques PBR (Poly Haven), candélabres, bancs et statue en modèles 3D réels, platanes en feuillage réel (ambientCG), ciel HDRI qui éclaire la scène, personnages humains animés (Quaternius : repos, marche, course, salut) et passants. Toutes les ressources sont stockées dans `public/ressources/` (aucun lien externe au lancement) et sont CC0 — voir `docs/LICENCES.md`. Pas encore de réseau.
 
 ## Lancer
 
@@ -13,6 +15,12 @@ npm test           # Vitest : règles, zones, souffle, spéciaux, navigation, bo
 npm run equilibrage # parties bots contre bots par difficulté : taux de victoire, durées, fins (outil de réglage)
 npm run build      # vérification TypeScript + build de production dans dist/
 npm run test:e2e   # Playwright (après build) : fumée (commandes) + partie complète pour les deux camps, clavier et tactile émulé
+```
+
+Ressources tierces (déjà versionnées ; à relancer seulement pour les régénérer) :
+```bash
+node scripts/assets/telecharger.mjs   # sources brutes → assets-sources/ (non versionné)
+node scripts/assets/preparer.mjs      # versions optimisées → public/ressources/
 ```
 
 Node ≥ 22.12. `.npmrc` contient `legacy-peer-deps=true` (contournement d'un plantage de npm 10.9 sur les pairs optionnels de Vitest, voir `docs/adr/0001-pile-technique.md`).

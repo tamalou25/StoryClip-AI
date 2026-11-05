@@ -3,6 +3,8 @@
 // Tactile : joystick flottant à gauche, glisser à droite pour tourner la caméra (facultatif), 2 gros boutons.
 // Aucune interaction n'exige le survol ni le verrouillage du pointeur.
 
+import { VITESSE_MARCHE, VITESSE_MAX } from '../sim/deplacement';
+
 export interface EtatCommandes {
   /** Joystick : jx vers la droite, jy vers l'avant, longueur ≤ 1. */
   jx: number;
@@ -28,7 +30,7 @@ const RECENTRER = ['KeyC'];
 const CAM_GAUCHE = ['KeyQ']; // touche A sur AZERTY
 const CAM_DROITE = ['KeyE'];
 const MARCHE = ['ShiftLeft', 'ShiftRight'];
-const FACTEUR_MARCHE = 0.29; // ≈ 1,6 m/s
+const FACTEUR_MARCHE = VITESSE_MARCHE / VITESSE_MAX; // ≈ 1,5 m/s
 const TOUCHES_JEU = new Set([...AVANT, ...ARRIERE, ...GAUCHE, ...DROITE, ...ACTION, ...SPECIAL, ...RECENTRER, ...CAM_GAUCHE, ...CAM_DROITE, ...MARCHE]);
 
 const RAYON_JOYSTICK = 56; // px

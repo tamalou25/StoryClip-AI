@@ -2,7 +2,7 @@
 // la simulation (collisions) et le rendu (décor). Proportions réduites et stylisées, pas un relevé exact.
 // Repères : place piétonne 88 × 50 m, chaussée de 9 m, façades à |z| = 34 et |x| = 58.
 
-export type GenreObstacle = 'socle' | 'arbre' | 'banc' | 'lampadaire' | 'colonne' | 'barriere' | 'immeuble';
+export type GenreObstacle = 'socle' | 'arbre' | 'banc' | 'lampadaire' | 'colonne' | 'barriere' | 'immeuble' | 'passant';
 
 /** Boîte alignée sur les axes, posée au sol. */
 export interface Obstacle {
@@ -34,6 +34,8 @@ export interface Carte {
   limites: { minX: number; maxX: number; minZ: number; maxZ: number };
   obstacles: Obstacle[];
   immeubles: Immeuble[];
+  /** Passants immobiles (décor vivant) ; ils bloquent comme des obstacles. */
+  passants: { x: number; z: number; regard: number; variante: number }[];
   departs: { x: number; z: number; cap: number }[];
 }
 
@@ -56,11 +58,20 @@ function construireRepublique(): Carte {
     obstacles.push(boite(`arbre-s${i}`, 'arbre', x, RANGEES_ARBRES_Z, 0.7, 0.7, 7));
   }
 
-  // Bancs face au centre, entre les arbres.
+  // Bancs face au centre, entre les arbres (modèle de 2,4 × 0,7 m).
   for (const x of [-27, -9, 9, 27]) {
-    obstacles.push(boite(`banc-n${x}`, 'banc', x, -15.4, 2, 0.6, 0.85));
-    obstacles.push(boite(`banc-s${x}`, 'banc', x, 15.4, 2, 0.6, 0.85));
+    obstacles.push(boite(`banc-n${x}`, 'banc', x, -15.4, 2.4, 0.7, 0.85));
+    obstacles.push(boite(`banc-s${x}`, 'banc', x, 15.4, 2.4, 0.7, 0.85));
   }
+
+  // Passants : à l'écart des axes de déplacement principaux.
+  const passants = [
+    { x: 24.4, z: 7.0, regard: -2.2, variante: 0 },
+    { x: -9.6, z: 13.5, regard: -Math.PI / 2, variante: 1 },
+    { x: -8.3, z: 13.5, regard: Math.PI / 2, variante: 2 },
+    { x: 12.5, z: -9.5, regard: 0.9, variante: 3 },
+  ];
+  for (const [i, p] of passants.entries()) obstacles.push(boite(`passant${i}`, 'passant', p.x, p.z, 0.6, 0.6, 1.8));
 
   // Lampadaires : autour du monument et le long des allées.
   for (const [x, z] of [[-7.5, -7.5], [7.5, -7.5], [-7.5, 7.5], [7.5, 7.5], [-36, -11], [36, -11], [-36, 11], [36, 11], [-18, -11], [18, 11]] as const) {
@@ -112,6 +123,7 @@ function construireRepublique(): Carte {
     limites: { minX: -44, maxX: 44, minZ: -25, maxZ: 25 },
     obstacles,
     immeubles,
+    passants,
     departs: [
       { x: -34, z: 0, cap: -Math.PI / 2 }, // regarde vers +x (vers le monument)
       { x: 34, z: 0, cap: Math.PI / 2 },

@@ -10,12 +10,13 @@ import type { Acteur, Evenement } from '../sim/partie';
 import { NOM_CAMP, type Camp } from '../sim/regles';
 import { creerCamera as creerEtatCamera, distanceCible, directionMonde, DISTANCE, lisserDistance, majCamera, poseCamera } from './camera';
 import { Commandes } from './commandes';
-import { construireDecor } from './decor';
+import { construireDecor, directionSoleil } from './decor';
 import { Ecrans } from './ecrans';
 import { Effets } from './effets';
 import { Hud } from './hud';
-import { Personnage3D, TENUE_MANIFESTANT, type Tenue } from './personnage';
+import { passant, Personnage3D } from './personnage';
 import { creerApplication, creerCamera, type Qualite } from './rendu';
+import { chargerRessources, type Ressources } from './ressources';
 import { Son } from './son';
 import { SonsJeu } from './sons-jeu';
 import { avancerTuto, creerTuto, type MemoireTuto } from './tuto';
@@ -42,7 +43,34 @@ const aideClavier = el<HTMLParagraphElement>('aide-clavier');
 
 // ——— Rendu et services ———
 const app = creerApplication(canvas, qualite);
-const ambiance = construireDecor(app, carte, qualite);
+
+// ——— Chargement des ressources (textures, modèles, ciel) avant la construction de la scène ———
+boutonJouer.disabled = true;
+boutonJouer.textContent = 'Chargement… 0 %';
+let res: Ressources;
+try {
+  res = await chargerRessources(app, qualite, (p) => { boutonJouer.textContent = `Chargement… ${Math.round(p * 100)} %`; });
+} catch (e) {
+  boutonJouer.textContent = 'Chargement impossible';
+  const avis = document.createElement('p');
+  avis.className = 'sous-titre';
+  avis.textContent = "Les ressources du jeu n'ont pas pu être chargées. Rechargez la page.";
+  el('menu-titre').insertAdjacentElement('afterend', avis);
+  throw e;
+}
+boutonJouer.disabled = false;
+boutonJouer.textContent = 'Jouer';
+boutonJouer.focus();
+
+construireDecor(app, carte, qualite, res);
+const ambianceSoleil = directionSoleil();
+const TEINTES_PASSANTS: Record<string, string>[] = [
+  { Red_Dark: '#6b3a32', LightBrown: '#3b3a3f' },
+  { Red_Dark: '#2f4560', LightBrown: '#4a4036' },
+  { Red_Dark: '#b9a27a', LightBrown: '#2a2e36' },
+  { Red_Dark: '#3e4a3a', LightBrown: '#5a4a3a' },
+];
+for (const p of carte.passants) passant(app, res.passant, p.x, p.z, p.regard, TEINTES_PASSANTS[p.variante % TEINTES_PASSANTS.length]!, (p.variante * 0.37) % 1);
 const { entite: cameraEntite } = creerCamera(app, qualite);
 const effets = new Effets(app);
 const son = new Son();
@@ -52,17 +80,23 @@ const hud = new Hud();
 const ecrans = new Ecrans([el('hud'), el('commandes')]);
 const commandes = new Commandes(el('commandes'));
 
-const TENUE_ORDRE: Tenue = { veste: '#2b3550', pantalon: '#1f2639', chaussures: '#141414', peau: '#c79470', cheveux: '#1a1e2b' };
-const VARIANTES_MANIF: Tenue[] = [
-  TENUE_MANIFESTANT,
-  { ...TENUE_MANIFESTANT, veste: '#8a3b2f', cheveux: '#5a3a22', peau: '#8d5a3b' },
-  { ...TENUE_MANIFESTANT, veste: '#3b5a8a', pantalon: '#2b2b2b', cheveux: '#111', peau: '#e0b08a' },
-  { ...TENUE_MANIFESTANT, veste: '#b08a2f', pantalon: '#3a3a4a', cheveux: '#c9a26a', peau: '#f0cdb0' },
-  { ...TENUE_MANIFESTANT, veste: '#6b4a7a', pantalon: '#34435c', cheveux: '#2b211a', peau: '#6b3f2a' },
-  { ...TENUE_MANIFESTANT, veste: '#2f6b5a', pantalon: '#5a4a3a', cheveux: '#3a2a1a', peau: '#d9a07a' },
-  { ...TENUE_MANIFESTANT, veste: '#9a5a2f', pantalon: '#2b3550', cheveux: '#1a1a1a', peau: '#b07a55' },
+// Teintes du modèle (matériaux Purple = sweat, LightBlue = pantalon, White = chaussures).
+// Manifestants : couleurs variées et chaudes ; forces de l'ordre : uniforme sombre, lisible de loin.
+type Teintes = Record<string, string>;
+const VARIANTES_MANIF: Teintes[] = [
+  { Purple: '#3c4350', LightBlue: '#2a3346', White: '#d9d5cc' },
+  { Purple: '#8a3b2f', LightBlue: '#34435c', White: '#d8d4cb' },
+  { Purple: '#b08a2f', LightBlue: '#3a3a4a', White: '#e6e2d8' },
+  { Purple: '#2f6b5a', LightBlue: '#5a4a3a', White: '#cfcac0' },
+  { Purple: '#6b4a7a', LightBlue: '#2b2b2b', White: '#d9d5cc' },
+  { Purple: '#9a5a2f', LightBlue: '#2b3550', White: '#e0dcd2' },
+  { Purple: '#5d6b4a', LightBlue: '#34435c', White: '#d8d4cb' },
 ];
-const VARIANTES_ORDRE: Tenue[] = [TENUE_ORDRE, { ...TENUE_ORDRE, peau: '#8d5a3b' }, { ...TENUE_ORDRE, peau: '#e0b08a', cheveux: '#2a2a2a' }, { ...TENUE_ORDRE, peau: '#6b3f2a' }, { ...TENUE_ORDRE, peau: '#f0cdb0' }];
+const VARIANTES_ORDRE: Teintes[] = [
+  { Purple: '#1f2a44', LightBlue: '#161c2b', White: '#111318' },
+  { Purple: '#223050', LightBlue: '#161c2b', White: '#111318' },
+  { Purple: '#1c2740', LightBlue: '#1a2030', White: '#141720' },
+];
 
 /** Modèles 3D par identifiant d'acteur, réutilisés d'une partie à l'autre. */
 const modeles = new Map<string, { modele: Personnage3D; camp: Camp }>();
@@ -71,9 +105,9 @@ function modelePour(a: Acteur, indexCamp: number): Personnage3D {
   if (existant && existant.camp === a.camp) return existant.modele;
   if (existant) existant.modele.racine.destroy();
   const variantes = a.camp === 'manif' ? VARIANTES_MANIF : VARIANTES_ORDRE;
-  const tenue = a.id === ID_JOUEUR ? variantes[0]! : variantes[(indexCamp + 1) % variantes.length]!;
-  const modele = new Personnage3D(app, tenue, qualite === 'haute' || a.id === ID_JOUEUR);
-  if (a.id === ID_JOUEUR) modele.onPas = (_cote, intensite) => son.pas(intensite);
+  const teintes = a.id === ID_JOUEUR ? variantes[0]! : variantes[(indexCamp + 1) % variantes.length]!;
+  const modele = new Personnage3D(app, res.manifestant, teintes);
+  if (a.id === ID_JOUEUR) modele.onPas = (intensite) => son.pas(intensite);
   modeles.set(a.id, { modele, camp: a.camp });
   return modele;
 }
@@ -89,9 +123,13 @@ let accumulateur = 0;
 let enJeu = false; // la simulation avance
 let partieActive = false; // une partie est affichée (en cours ou en pause)
 let derniereAction = false;
+/** Spécial demandé mais pas encore vu par un pas de simulation (image sans pas : rien n'est perdu). */
+let specialEnAttente = false;
 let tuto: MemoireTuto = creerTuto();
 let minuterieResultat: number | null = null;
 let dernierDecompte = -1;
+/** Point de vue imposé (crochet de test uniquement), pour contrôler le rendu sous plusieurs angles. */
+let vueImposee: { position: { x: number; y: number; z: number }; cible: { x: number; y: number; z: number } } | null = null;
 
 function appliquerReglagesClient(): void {
   const r = ecrans.reglages;
@@ -147,6 +185,7 @@ function reprendre(): void {
   appliquerReglagesClient();
   enJeu = true;
   accumulateur = 0;
+  specialEnAttente = false;
   precedent = monde; // pas d'interpolation vers un état périmé à la reprise
   ecrans.montrer(null);
   commandes.activer(true);
@@ -235,7 +274,8 @@ app.on('update', (dtBrut: number) => {
     }, dt);
 
     const dir = directionMonde(c.jx, c.jy, camera.lacet);
-    const intention = normaliserIntention({ dx: dir.dx, dz: dir.dz, action: c.action, special: c.special });
+    if (c.special) specialEnAttente = true;
+    const intention = normaliserIntention({ dx: dir.dx, dz: dir.dz, action: c.action, special: specialEnAttente });
     derniereAction = c.action;
 
     accumulateur += dt;
@@ -248,6 +288,7 @@ app.on('update', (dtBrut: number) => {
       traiterEvenements(monde.evenements);
     }
     if (pas === PAS_MAX_PAR_IMAGE) accumulateur = 0;
+    if (pas > 0) specialEnAttente = false;
 
     // Décompte sonore des dix dernières secondes.
     const restant = Math.ceil(monde.partie.duree - monde.partie.temps);
@@ -292,13 +333,12 @@ function rendre(dt: number): void {
 
   const vitesseJ = Math.hypot(joueurA.vx + (joueurB.vx - joueurA.vx) * alpha, joueurA.vz + (joueurB.vz - joueurA.vz) * alpha);
   distanceCamera = lisserDistance(distanceCamera, distanceCible(xJ, zJ, camera.lacet, carte.obstacles), dt);
-  const pose = poseCamera(xJ, zJ, camera.lacet, carte.obstacles, distanceCamera);
+  const pose = vueImposee ?? poseCamera(xJ, zJ, camera.lacet, carte.obstacles, distanceCamera);
   cameraEntite.setPosition(pose.position.x, pose.position.y, pose.position.z);
   cameraEntite.lookAt(pose.cible.x, pose.cible.y, pose.cible.z);
   // Léger élargissement du champ en course : sensation de vitesse sans secousse.
   fov += (55 + Math.min(enJeu ? vitesseJ : 0, 6) * 0.9 - fov) * Math.min(1, dt * 3);
   cameraEntite.camera!.fov = fov;
-  ambiance.ciel.setPosition(pose.position.x, 0, pose.position.z);
 
   hud.maj(monde, joueurB, camera.lacet);
 }
@@ -383,10 +423,14 @@ app.start();
 // Crochet de test (uniquement avec ?test=1) : lecture de l'état et accélération de la simulation.
 if (modeTest) {
   (window as unknown as Record<string, unknown>).__pm3d = {
+    app, // inspection de la scène dans les tests uniquement
+    vue: (position: [number, number, number] | null, cible?: [number, number, number]) => {
+      vueImposee = position && cible ? { position: { x: position[0], y: position[1], z: position[2] }, cible: { x: cible[0], y: cible[1], z: cible[2] } } : null;
+    },
     etat: () => {
       const p = monde.acteurs[ID_JOUEUR]!;
       return {
-        x: p.x, z: p.z, cap: p.cap, vitesse: Math.hypot(p.vx, p.vz), souffle: p.souffle, etatJoueur: p.etat, charges: p.charges, recharge: p.recharge, rallie: p.rallie,
+        x: p.x, z: p.z, cap: p.cap, soleil: [ambianceSoleil.x, ambianceSoleil.y, ambianceSoleil.z], vitesse: Math.hypot(p.vx, p.vz), souffle: p.souffle, etatJoueur: p.etat, charges: p.charges, recharge: p.recharge, rallie: p.rallie,
         lacetCamera: camera.lacet, tick: monde.tick, enJeu, partieActive, ecran: ecrans.courant, camp: campJoueur,
         phase: monde.partie.phase, vainqueur: monde.partie.vainqueur, raison: monde.partie.raison, temps: monde.partie.temps,
         mobilisation: monde.partie.mobilisation, cible: monde.partie.cibleMobilisation,

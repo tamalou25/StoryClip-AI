@@ -42,12 +42,12 @@ Réponses prévues : au gaz → sortir du nuage et contourner (les bots le font 
 - Difficulté (« Adversaires faciles / normaux / coriaces ») : s'applique aux bots du camp adverse ; vos coéquipiers restent « normaux ». Réglages dans `PROFILS` : temps de réflexion, usage des spéciaux, perception, vitesse, seuil de repli.
 - Déterminisme : graine dans l'état (`alea.ts`, mulberry32). Même graine + mêmes intentions = même partie.
 
-## Équilibre mesuré (bots contre bots, `npm run equilibrage`, 24 parties par difficulté, 05/11/2026)
+## Équilibre mesuré (bots contre bots, `npm run equilibrage`, 24 parties par difficulté, 05/11/2026, vitesse de course 4,6 m/s)
 
 | Difficulté | Victoires manifestants | Durée moyenne | Fins |
 |---|---|---|---|
-| Faciles | 19/24 | 203 s | surtout mobilisation atteinte |
-| Normaux | 12/24 | 240 s | mobilisation 12, temps écoulé 9, place dégagée 3 |
-| Coriaces | 2/24 | 184 s | place dégagée 15, temps écoulé 7 |
+| Faciles | 16/24 | 211 s | mobilisation 16, temps écoulé 5, place dégagée 3 |
+| Normaux | 12/24 | 191 s | mobilisation 12, place dégagée 10, temps écoulé 2 |
+| Coriaces | 9/24 | 220 s | mobilisation 9, temps écoulé 8, place dégagée 7 |
 
 En solo, la difficulté ne touche que les adversaires : ces chiffres bots-contre-bots donnent l'ordre de grandeur, pas l'expérience du joueur.

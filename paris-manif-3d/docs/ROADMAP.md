@@ -38,6 +38,19 @@ Menu complet au clavier et au toucher : accueil → choix du camp → partie (mi
 | Détails | pas de balconnets/lucarnes, houppiers 6 volumes, textures réduites | complet, houppiers 14 volumes, anisotropie 8× |
 | Appels de dessin mesurés (headless) | 97 | 542 |
 
+## Incrément 2b — ressources réelles (05/11/2026)
+| Qualité | Basse (mobile par défaut) | Haute (ordinateur par défaut) |
+|---|---|---|
+| Textures PBR (Poly Haven) | 512 px (écorce 256) | 1024 px, dalles 2048 px |
+| Ciel / éclairage HDRI | 1k, atlas IBL 256 | 2k, atlas IBL 512 |
+| Candélabre / banc / statue | 3 900 / 5 700 / 14 700 triangles | 15 400 / 12 500 / 16 600 triangles |
+| Feuillage | 77 cartes par arbre, test alpha | 180 cartes par arbre, alpha-to-coverage (MSAA) |
+| Ombres / post-traitement | 1 cascade 30 m, aucun | 3 cascades 90 m, SSAO, bloom, étalonnage |
+| Téléchargement | ≈ 5,7 Mo | ≈ 14,6 Mo |
+| Appels de dessin mesurés (Chromium headless) | 135 | 598 |
+
+Les i/s ne sont pas mesurables ici (rendu logiciel) : à mesurer sur un vrai téléphone en priorité.
+
 ## Partie solo complète (05/11/2026)
 - Incréments 3, 5, 6 et 8 livrés en solo dans la même session (session « gameplay », en parallèle de la session « graphismes »).
 - Validé : Vitest (règles, bots, navigation, parties complètes bots contre bots), build, Playwright (fumée + partie complète pour les deux camps, clavier puis Pixel 7 émulé). Aucun essai sur téléphone réel.

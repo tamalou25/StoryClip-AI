@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { CARTE_REPUBLIQUE, type Carte } from '../src/sim/carte';
-import { avancer, chevauche, creerPersonnage, RAYON, VITESSE_MAX } from '../src/sim/deplacement';
+import { avancer, chevauche, creerPersonnage, RAYON, VITESSE_MARCHE, VITESSE_MAX } from '../src/sim/deplacement';
 import { INTENTION_NEUTRE } from '../src/sim/intention';
 import { creerMonde, DT, etape } from '../src/sim/monde';
 
-const vide: Carte = { nom: 'vide', limites: { minX: -50, maxX: 50, minZ: -50, maxZ: 50 }, obstacles: [], immeubles: [], departs: [{ x: 0, z: 0, cap: 0 }] };
+const vide: Carte = { nom: 'vide', limites: { minX: -50, maxX: 50, minZ: -50, maxZ: 50 }, obstacles: [], immeubles: [], passants: [], departs: [{ x: 0, z: 0, cap: 0 }] };
 const mur: Carte = {
   ...vide,
   obstacles: [{ id: 'mur', genre: 'barriere', minX: -5, maxX: 5, minZ: -3, maxZ: -2, hauteur: 2 }],
@@ -29,10 +29,10 @@ describe('déplacement', () => {
     expect(p.x).toBeLessThan(VITESSE_MAX * 3);
   });
 
-  it('une intention courte donne une marche (≈ 1,6 m/s)', () => {
-    const p = marcher(vide, 0.29, 0, 3);
+  it('une intention courte donne une marche (≈ 1,5 m/s)', () => {
+    const p = marcher(vide, VITESSE_MARCHE / VITESSE_MAX, 0, 3);
     expect(Math.hypot(p.vx, p.vz)).toBeGreaterThan(1.4);
-    expect(Math.hypot(p.vx, p.vz)).toBeLessThan(1.8);
+    expect(Math.hypot(p.vx, p.vz)).toBeLessThan(1.6);
   });
 
   it('accélère progressivement (poids) mais freine plus vite', () => {

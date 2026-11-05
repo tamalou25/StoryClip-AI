@@ -6,8 +6,10 @@ import type { Intention } from './intention';
 import { borner, capVers, ecartAngle, lissage, normaliserAngle } from './math';
 
 export const RAYON = 0.4;
-export const VITESSE_MAX = 5.6; // m/s : course (joystick ou touches à fond)
-export const VITESSE_MARCHE = 1.6; // m/s : intention de longueur ≈ 0,3 (Maj ou joystick peu poussé)
+// Vitesses calées sur les animations du personnage (course naturelle 2,84 m/s jouée ×1,6,
+// marche naturelle 1,26 m/s jouée ×1,2) : le jeu reste vif sans que les pieds glissent trop.
+export const VITESSE_MAX = 4.6; // m/s : course (joystick ou touches à fond)
+export const VITESSE_MARCHE = 1.5; // m/s : Maj ou joystick peu poussé
 export const ACCELERATION = 7; // réactivité à l'accélération (1/s) : donne du poids au départ
 export const FREINAGE = 10; // réactivité au freinage (1/s) : arrêt net mais pas instantané
 export const ROTATION = 9; // réactivité du cap (1/s)

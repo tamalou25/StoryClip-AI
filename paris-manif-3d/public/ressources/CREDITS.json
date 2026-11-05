@@ -1,0 +1,160 @@
+[
+  {
+    "type": "texture",
+    "source": "Poly Haven",
+    "id": "concrete_tiles_02",
+    "url": "https://polyhaven.com/a/concrete_tiles_02",
+    "auteurs": {
+      "Charlotte Baglioni": "All"
+    },
+    "dimensionsMm": [
+      1825.0000476837158,
+      1825.0000476837158
+    ],
+    "licence": "CC0 1.0",
+    "usage": "dalles de l'esplanade"
+  },
+  {
+    "type": "texture",
+    "source": "Poly Haven",
+    "id": "cobblestone_floor_09",
+    "url": "https://polyhaven.com/a/cobblestone_floor_09",
+    "auteurs": {
+      "Charlotte Baglioni": "All"
+    },
+    "dimensionsMm": [
+      2174.999952316284,
+      2174.999952316284
+    ],
+    "licence": "CC0 1.0",
+    "usage": "pavés (bandes d'arbres, bordures, trottoirs)"
+  },
+  {
+    "type": "texture",
+    "source": "Poly Haven",
+    "id": "asphalt_02",
+    "url": "https://polyhaven.com/a/asphalt_02",
+    "auteurs": {
+      "Rob Tuytel": "All"
+    },
+    "dimensionsMm": [
+      3000.000238418579,
+      3000
+    ],
+    "licence": "CC0 1.0",
+    "usage": "chaussée"
+  },
+  {
+    "type": "texture",
+    "source": "Poly Haven",
+    "id": "bark_platanus",
+    "url": "https://polyhaven.com/a/bark_platanus",
+    "auteurs": {
+      "Dimitrios Savva": "All"
+    },
+    "dimensionsMm": [
+      1500.0001192092896,
+      1500.0001192092896
+    ],
+    "licence": "CC0 1.0",
+    "usage": "écorce des platanes"
+  },
+  {
+    "type": "texture",
+    "source": "Poly Haven",
+    "id": "beige_wall_001",
+    "url": "https://polyhaven.com/a/beige_wall_001",
+    "auteurs": {
+      "Dimitrios Savva": "Photography",
+      "Rico Cilliers": "Processing"
+    },
+    "dimensionsMm": [
+      3000,
+      3000.000238418579
+    ],
+    "licence": "CC0 1.0",
+    "usage": "détail de la pierre des façades"
+  },
+  {
+    "type": "modèle",
+    "source": "Poly Haven",
+    "id": "street_lamp_01",
+    "url": "https://polyhaven.com/a/street_lamp_01",
+    "auteurs": {
+      "Josh Dean": "All"
+    },
+    "dimensionsMm": [
+      704.3362259864807,
+      386.49316132068634,
+      3870.5554008483887
+    ],
+    "licence": "CC0 1.0",
+    "usage": "candélabres"
+  },
+  {
+    "type": "modèle",
+    "source": "Poly Haven",
+    "id": "modular_street_seating",
+    "url": "https://polyhaven.com/a/modular_street_seating",
+    "auteurs": {
+      "Stuart Attenborrow": "All"
+    },
+    "dimensionsMm": [
+      4339.9999141693115,
+      770.3700959682465,
+      950.000050743509
+    ],
+    "licence": "CC0 1.0",
+    "usage": "bancs"
+  },
+  {
+    "type": "modèle",
+    "source": "Poly Haven",
+    "id": "gothic_statue",
+    "url": "https://polyhaven.com/a/gothic_statue",
+    "auteurs": {
+      "Benny Weimer": "All"
+    },
+    "dimensionsMm": [
+      1477.4640202522278,
+      1563.7580156326294,
+      1739.8978471755981
+    ],
+    "licence": "CC0 1.0",
+    "usage": "statue allégorique au sommet du monument (fictive)"
+  },
+  {
+    "type": "HDRI",
+    "source": "Poly Haven",
+    "id": "kloofendal_48d_partly_cloudy_puresky",
+    "url": "https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky",
+    "auteurs": {
+      "Greg Zaal": "Original",
+      "Jarod Guest": "Sky edits"
+    },
+    "licence": "CC0 1.0",
+    "usage": "ciel et éclairage d'ambiance (IBL)"
+  },
+  {
+    "type": "atlas",
+    "source": "ambientCG",
+    "id": "LeafSet010",
+    "url": "https://ambientcg.com/view?id=LeafSet010",
+    "auteurs": {
+      "Lennart Demes (ambientCG)": "All"
+    },
+    "licence": "CC0 1.0",
+    "usage": "feuilles palmées pour les houppiers de platanes"
+  },
+  {
+    "type": "personnages animés",
+    "source": "Quaternius",
+    "id": "Ultimate Modular Men (Feb 2022)",
+    "url": "https://quaternius.com/packs/ultimatemodularcharacters.html",
+    "auteurs": {
+      "Quaternius": "All"
+    },
+    "licence": "CC0 1.0",
+    "acces": "Le lien officiel (Google Drive) renvoyait « quota exceeded » le 2026-11-05 ; fichiers identiques récupérés depuis une copie publique du pack incluant son License.txt d'origine."
+  }
+]

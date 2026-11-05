@@ -73,16 +73,20 @@ async function manifestantsClavier(navigateur) {
   await page.keyboard.down('Space');
   e = await jusqua(page, (s) => s.rallie === true, 3000);
   verifier(e.rallie, 'Espace maintenu = rassembler (état rallie)');
-  e = await jusqua(page, (s) => s.zones.find((z) => z.id === 'ouest').presents.manif >= 1 && s.x > -28, 25000);
+  e = await jusqua(page, (s) => s.zones.find((z) => z.id === 'ouest').presents.manif >= 1 && s.x > -28, 70000);
   verifier(s(e), 'le joueur atteint le parvis ouest', `x=${e.x.toFixed(1)}`);
   function s(ee) { return ee.zones.find((z) => z.id === 'ouest').presents.manif >= 1 && ee.x > -28; }
   await page.keyboard.up('KeyW');
+  // Le rendu logiciel fait avancer la simulation bien plus lentement que le temps réel : on avance de
+  // quelques secondes de jeu d'un coup (joueur immobile dans la zone, bots actifs) puis on vérifie l'état.
+  await page.evaluate(() => window.__pm3d.accelerer(8));
   e = await jusqua(page, (s) => s.zones.find((z) => z.id === 'ouest').tenue === 'manif', 20000);
   verifier(e.zones.find((z) => z.id === 'ouest').tenue === 'manif', 'le parvis ouest bascule côté manifestants', `contrôle=${e.zones[0].controle.toFixed(2)}`);
   verifier((await page.locator('#journal li').count()) >= 1, 'le journal annonce l’événement (aria-live)');
   e = await jusqua(page, (s) => s.mobilisation > 0.5, 5000);
   verifier(e.mobilisation > 0.5, 'la mobilisation monte quand une zone est tenue', `mob=${e.mobilisation.toFixed(1)}`);
   await page.keyboard.up('Space');
+  await attendre(600); // le HUD se met à jour à l'image suivante
   const valeur = await page.getAttribute('#jauge', 'aria-valuenow');
   verifier(Number(valeur) >= 1, 'la jauge expose aria-valuenow', valeur);
   await page.screenshot({ path: `${CAPTURES}partie-manif.png`, timeout: 60000 });
