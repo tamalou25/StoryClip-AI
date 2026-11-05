@@ -101,8 +101,8 @@ Taille ≤ 512 octets (fermeture 1009), seau à jetons par connexion (60 message
 | Commande | Contenu | Résultat |
 |---|---|---|
 | `npm test` | 11 fichiers Vitest, dont 5 multijoueurs avec **vrais sockets** et clients indépendants (`server/tests/`) + modules purs (`tests/reseau.test.ts`, `tests/client-reseau.test.ts`) | 99/99 |
-| `npm run test:multi` (après les deux builds) | 3 processus Chromium indépendants contre le serveur de production construit : salon, code, camps, prêt, hôte, erreurs, déplacements dans les deux sens, coupure, rechargement, résultat commun, revanche, départ | voir ci-dessous |
-| `PM3D_E2E_URL=http://127.0.0.1:8095 npm run test:multi` | Même scénario contre le **conteneur Docker** | tout vert (avant fusion des ressources graphiques) |
+| `npm run test:multi` (après les deux builds) | 3 processus Chromium indépendants contre le serveur de production construit : salon, code, camps, prêt, hôte, erreurs, déplacements dans les deux sens, coupure, rechargement, résultat commun, revanche, départ | **40/40** (après fusion des ressources graphiques ; ≈ 15 min en rendu logiciel) |
+| `PM3D_E2E_URL=http://127.0.0.1:8095 npm run test:multi` | Même scénario contre le **conteneur Docker** | tout vert avant la fusion des ressources graphiques ; après : santé, fichiers statiques (dont les glTF), salon via `/ws` et refus d'une origine étrangère (403) vérifiés |
 | `npm run test:e2e` | Fumée solo existante | verte |
 
 Couverture des tests Node : création et code (saisie tolérante), noms nettoyés et dédoublonnés, seul l'hôte lance, introuvable / mal formé / complet / commencée / indisponible ; prédiction = serveur, mouvement vu dans les deux sens, 0 correction ; mêmes scores et résultat chez 3 clients, bot de complément ; coupure en partie (bot intérim, reprise, commandes retrouvées), socket morte (ping sans réponse), hôte transféré, rechargement, délai dépassé, départ volontaire, salon supprimé ; revanche sans état résiduel, revanche malgré un départ ; 14 messages invalides puis expulsion sans perturber une partie voisine, 1009, inondation, intention de longueur 50, rejeu de numéros, messages avant d'avoir rejoint, version, limites par IP, `X-Forwarded-For`, origine ; 4 salons en parallèle isolés ; latence.
@@ -120,11 +120,11 @@ Mesures sous latence simulée (75 ms par sens + gigue 0–20 ms, soit 160–190 
 
 Conclusion : la prédiction divise par ~5 le délai ressenti, sans aucune correction ; elle reste activée. Trois salons joués simultanément sous cette latence donnent chacun le même résultat chez leurs deux joueurs.
 
-Navigateur headless (rendu logiciel, 1–3 i/s réelles) : déplacements identiques chez A et B à quelques centimètres près, reprise de la place après coupure et après rechargement. **Pas mesuré** : vrais téléphones, vrai réseau mobile, 4 joueurs humains réels, charge de centaines de salons.
+Navigateur headless (rendu logiciel, 1,5 i/s réelles après fusion des ressources graphiques ; ~40 s avant la première image d'une page) : déplacements identiques chez A et B à quelques centimètres près, reprise de la place après coupure et après rechargement. **Pas mesuré** : vrais téléphones, vrai réseau mobile, 4 joueurs humains réels, charge de centaines de salons.
 
 ## Déploiement
 
-`Dockerfile` (un seul conteneur : client + `/ws`, utilisateur non root, contrôle de santé `/sante`). **Testé localement** : image construite (372 Mo), contrôle de santé « healthy », E2E complet contre le conteneur. **Non testé** : hébergement public, TLS.
+`Dockerfile` (un seul conteneur : client + `/ws`, utilisateur non root, contrôle de santé `/sante`). **Testé localement** : image construite (436 Mo avec les ressources graphiques), contrôle de santé « healthy », E2E complet contre le conteneur (avant fusion des ressources), puis vérifications ciblées après fusion. **Non testé** : hébergement public, TLS.
 
 En production : servir derrière un proxy TLS (`wss://` obligatoire depuis une page `https://`), définir `PM3D_ORIGINES`, et `PM3D_CONFIANCE_PROXY=1` si un seul proxy inverse est devant (sinon toutes les connexions partagent l'adresse du proxy et la limite par IP bloque vite). Un seul processus suffit pour l'ordre de grandeur visé (une partie = 4 joueurs × ~4 Ko/s) ; plusieurs processus demanderaient un routage des codes vers le bon processus (non fait). Les salons vivent en mémoire : un redémarrage les ferme.
 
