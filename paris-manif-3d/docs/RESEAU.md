@@ -82,7 +82,7 @@ Serveur → client : `bienvenue {id, code, jeton}`, `salon {VueSalon}`, `debut {
 | Démarrer | Seul l'hôte, quand ≥ 2 joueurs connectés sont tous prêts. Les équipes sont complétées par des bots serveur jusqu'à égalité d'effectif. |
 | Partie | Mêmes objectifs, scores, minuteur et résultat pour tous (calculés par le serveur). Pas de pause en ligne : le menu en partie laisse la partie continuer. |
 | Créateur (hôte) déconnecté ou parti | L'hôte passe aussitôt au plus ancien joueur connecté ; le créateur revenu est un joueur normal. |
-| Coupure réseau / onglet fermé | Place réservée `PM3D_GRACE_S` (30 s). En partie, un bot serveur pilote le personnage en attendant. Le client réessaie seul (0,4 → 4 s) ; après rechargement de la page, `sessionStorage` permet de reprendre sa place. |
+| Coupure réseau / onglet fermé | Place réservée `PM3D_GRACE_S` (30 s). En partie, un bot serveur pilote le personnage en attendant. Le client réessaie seul (0,4 → 4 s entre essais ; il n'abandonne qu'après 90 s, le serveur tranchant avant par « place expirée ») ; après rechargement de la page, `sessionStorage` permet de reprendre sa place. |
 | Délai dépassé | Salon / résultats : place libérée. Partie : le personnage reste piloté par un bot jusqu'à la fin et figure « (bot) » au résultat. La reprise est refusée : « Votre place dans ce salon a expiré. » |
 | « Quitter » | Comme un délai dépassé, mais immédiat. |
 | Même place ouverte ailleurs | L'ancienne connexion est fermée (« reprise dans un autre onglet »). |
