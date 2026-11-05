@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#1d2430" />
+    <title>Paris Manif 3D — prototype</title>
+    <link rel="stylesheet" href="/src/client/style.css" />
+  </head>
+  <body>
+    <canvas id="scene" aria-label="Vue du jeu"></canvas>
+
+    <!-- Couche tactile : joystick flottant à gauche, glisser à droite pour tourner la caméra. -->
+    <div id="commandes" class="commandes" aria-hidden="true">
+      <div class="joystick-base" hidden><div class="joystick-bouton"></div></div>
+      <div class="boutons">
+        <button type="button" tabindex="-1" class="bouton-jeu" data-commande="recentrer">Recentrer</button>
+        <button type="button" tabindex="-1" class="bouton-jeu bouton-principal" data-commande="action">Action</button>
+      </div>
+    </div>
+
+    <div class="hud">
+      <button type="button" id="bouton-pause" class="bouton-hud" aria-label="Pause (Échap)">❚❚</button>
+      <span id="fps" class="info-hud" aria-hidden="true"></span>
+      <span id="aide-clavier" class="info-hud aide-clavier">ZQSD / flèches : bouger · A/E : caméra · C : recentrer · Échap : pause</span>
+    </div>
+
+    <p id="bandeau-portrait" class="bandeau" hidden>Tourne le téléphone en paysage pour mieux jouer.</p>
+
+    <div id="menu" class="menu" role="dialog" aria-modal="true" aria-labelledby="menu-titre">
+      <div class="panneau">
+        <h1 id="menu-titre">Paris Manif 3D</h1>
+        <p class="sous-titre">Prototype — incrément 1 : déplacement, caméra, commandes.</p>
+        <button type="button" id="bouton-jouer" class="bouton-menu" autofocus>Jouer</button>
+        <button type="button" id="bouton-qualite" class="bouton-menu secondaire">Qualité : basse</button>
+        <ul class="aide">
+          <li><strong>Ordinateur :</strong> ZQSD (AZERTY) ou WASD/flèches, A/E (Q/E en QWERTY) pour tourner la caméra, C pour recentrer, Espace pour l'action, Échap pour la pause.</li>
+          <li><strong>Mobile :</strong> pouce gauche n'importe où à gauche = joystick ; glisser à droite = caméra (facultatif) ; boutons à droite.</li>
+        </ul>
+        <p class="note">Simulation de jeu fictive. Aucun lien avec des événements réels.</p>
+      </div>
+    </div>
+
+    <script type="module" src="/src/client/main.ts"></script>
+  </body>
+</html>
