@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-    <meta name="theme-color" content="#1d2430" />
-    <title>Paris Manif 3D — prototype</title>
+    <meta name="theme-color" content="#1b1f24" />
+    <title>Paris Manif 3D</title>
     <link rel="stylesheet" href="/src/client/style.css" />
   </head>
   <body>
@@ -14,30 +14,42 @@
     <div id="commandes" class="commandes" aria-hidden="true">
       <div class="joystick-base" hidden><div class="joystick-bouton"></div></div>
       <div class="boutons">
-        <button type="button" tabindex="-1" class="bouton-jeu" data-commande="recentrer">Recentrer</button>
-        <button type="button" tabindex="-1" class="bouton-jeu bouton-principal" data-commande="action">Action</button>
+        <button type="button" tabindex="-1" class="bouton-jeu" data-commande="recentrer" aria-label="Recentrer la caméra">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5a7 7 0 1 1-6.6 4.7" /><path d="M5 4v5h5" /></svg>
+        </button>
+        <button type="button" tabindex="-1" class="bouton-jeu bouton-principal" data-commande="action" aria-label="Action">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20V5" /><path d="M7 9l5-5 5 5" /></svg>
+        </button>
       </div>
     </div>
 
     <div class="hud">
-      <button type="button" id="bouton-pause" class="bouton-hud" aria-label="Pause (Échap)">❚❚</button>
-      <span id="fps" class="info-hud" aria-hidden="true"></span>
-      <span id="aide-clavier" class="info-hud aide-clavier">ZQSD / flèches : bouger · A/E : caméra · C : recentrer · Échap : pause</span>
+      <button type="button" id="bouton-pause" class="bouton-hud" aria-label="Pause (Échap)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6v12M15 6v12" /></svg>
+      </button>
+      <span id="aide-clavier" class="info-hud aide-clavier">
+        <kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd> courir · <kbd>Maj</kbd> marcher · <kbd>A</kbd><kbd>E</kbd> caméra · <kbd>C</kbd> recentrer
+      </span>
+      <span id="fps" class="info-hud fps" aria-hidden="true"></span>
     </div>
 
-    <p id="bandeau-portrait" class="bandeau" hidden>Tourne le téléphone en paysage pour mieux jouer.</p>
+    <p id="bandeau-portrait" class="bandeau" hidden>Tournez le téléphone pour jouer en paysage.</p>
 
     <div id="menu" class="menu" role="dialog" aria-modal="true" aria-labelledby="menu-titre">
       <div class="panneau">
-        <h1 id="menu-titre">Paris Manif 3D</h1>
-        <p class="sous-titre">Prototype — incrément 1 : déplacement, caméra, commandes.</p>
+        <p class="surtitre">Prototype · place de la République (fictive)</p>
+        <h1 id="menu-titre">Paris <span>Manif</span></h1>
+        <p class="sous-titre">Traversez la place, prenez vos repères. Les camps, objectifs et parties viendront ensuite.</p>
         <button type="button" id="bouton-jouer" class="bouton-menu" autofocus>Jouer</button>
-        <button type="button" id="bouton-qualite" class="bouton-menu secondaire">Qualité : basse</button>
-        <ul class="aide">
-          <li><strong>Ordinateur :</strong> ZQSD (AZERTY) ou WASD/flèches, A/E (Q/E en QWERTY) pour tourner la caméra, C pour recentrer, Espace pour l'action, Échap pour la pause.</li>
-          <li><strong>Mobile :</strong> pouce gauche n'importe où à gauche = joystick ; glisser à droite = caméra (facultatif) ; boutons à droite.</li>
-        </ul>
-        <p class="note">Simulation de jeu fictive. Aucun lien avec des événements réels.</p>
+        <div class="reglages">
+          <button type="button" id="bouton-qualite" class="bouton-menu secondaire">Qualité : basse</button>
+          <button type="button" id="bouton-son" class="bouton-menu secondaire" aria-pressed="true">Son : activé</button>
+        </div>
+        <dl class="aide">
+          <div><dt>Clavier</dt><dd><kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd> ou flèches · <kbd>Maj</kbd> marcher · <kbd>A</kbd>/<kbd>E</kbd> caméra · <kbd>C</kbd> recentrer · <kbd>Espace</kbd> action · <kbd>Échap</kbd> pause</dd></div>
+          <div><dt>Tactile</dt><dd>Pouce gauche : se déplacer (pousser peu = marcher) · glisser à droite : caméra · boutons à droite</dd></div>
+        </dl>
+        <p class="note">Univers fictif. Aucune personne, unité ni insigne réels.</p>
       </div>
     </div>
 

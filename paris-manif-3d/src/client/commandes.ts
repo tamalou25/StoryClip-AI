@@ -24,7 +24,9 @@ const ACTION = ['Space'];
 const RECENTRER = ['KeyC'];
 const CAM_GAUCHE = ['KeyQ']; // touche A sur AZERTY
 const CAM_DROITE = ['KeyE'];
-const TOUCHES_JEU = new Set([...AVANT, ...ARRIERE, ...GAUCHE, ...DROITE, ...ACTION, ...RECENTRER, ...CAM_GAUCHE, ...CAM_DROITE]);
+const MARCHE = ['ShiftLeft', 'ShiftRight'];
+const FACTEUR_MARCHE = 0.29; // ≈ 1,6 m/s
+const TOUCHES_JEU = new Set([...AVANT, ...ARRIERE, ...GAUCHE, ...DROITE, ...ACTION, ...RECENTRER, ...CAM_GAUCHE, ...CAM_DROITE, ...MARCHE]);
 
 const RAYON_JOYSTICK = 56; // px
 const ZONE_MORTE = 0.15;
@@ -92,6 +94,7 @@ export class Commandes {
     let jy = t(AVANT) - t(ARRIERE) + this.joystick.jy;
     const l = Math.hypot(jx, jy);
     if (l > 1) { jx /= l; jy /= l; }
+    if (t(MARCHE)) { jx *= FACTEUR_MARCHE; jy *= FACTEUR_MARCHE; }
     const etat: EtatCommandes = {
       jx,
       jy,

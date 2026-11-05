@@ -28,3 +28,12 @@ Rythme : 5–10 h/semaine. Heures = travail humain (pilotage, essais, relecture)
 
 ## Prochain petit incrément recommandé (3b, ~4–6 h)
 Menu complet au clavier et au toucher : accueil → choix du camp → partie (minuteur 5 min factice) → écran de résultats → revanche, avec état de partie dans `src/sim/` et tests du parcours.
+
+## Incrément 2 visuel (05/11/2026)
+| Qualité | Basse (mobile par défaut) | Haute (ordinateur par défaut) |
+|---|---|---|
+| Résolution | 1× | jusqu'à 2× + MSAA 4× |
+| Ombres | 1 cascade, 28 m, 1024 px | 3 cascades, 90 m, 2048 px |
+| Post-traitement | aucun | SSAO, bloom léger, étalonnage, vignette |
+| Détails | pas de balconnets/lucarnes, houppiers 6 volumes, textures réduites | complet, houppiers 14 volumes, anisotropie 8× |
+| Appels de dessin mesurés (headless) | 97 | 542 |

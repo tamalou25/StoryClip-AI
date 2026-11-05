@@ -10,6 +10,9 @@ import { mkdirSync } from 'node:fs';
 
 const PORT = 4174;
 const URL_JEU = `http://localhost:${PORT}/?test=1`;
+// Le rendu logiciel de Chromium headless ne tient pas la qualité haute (SSAO, MSAA) en temps réel :
+// les vérifications de commandes se font en qualité basse, la qualité haute est contrôlée à part.
+const URL_BASSE = `${URL_JEU}&qualite=basse`;
 const CAPTURES = new URL('./captures/', import.meta.url).pathname;
 mkdirSync(CAPTURES, { recursive: true });
 
@@ -30,15 +33,24 @@ async function pret() {
 }
 
 const etat = (page) => page.evaluate(() => window.__pm3d.etat());
+/** Interroge l'état jusqu'à ce que la condition soit vraie (ou délai écoulé) ; renvoie le dernier état. */
+async function jusqua(page, condition, delai = 15000) {
+  const fin = Date.now() + delai;
+  let e = await etat(page);
+  while (!condition(e) && Date.now() < fin) { await attendre(150); e = await etat(page); }
+  return e;
+}
+const ecartAngle = (a, b) => Math.abs(((b - a + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
 
 async function ordinateur(navigateur) {
-  console.log('— Ordinateur 1280×800, clavier seul —');
+  console.log('— Ordinateur 1280×800, clavier seul (qualité basse) —');
   const page = await navigateur.newPage({ viewport: { width: 1280, height: 800 } });
   const erreurs = [];
   page.on('pageerror', (e) => erreurs.push(e.message));
   page.on('console', (m) => { if (m.type() === 'error') erreurs.push(m.text()); });
-  await page.goto(URL_JEU);
+  await page.goto(URL_BASSE);
   await page.waitForFunction(() => window.__pm3d !== undefined);
+  await page.waitForFunction(() => window.__pm3d.etat().fps > 3, null, { timeout: 60000 });
 
   const focus = await page.evaluate(() => document.activeElement?.id);
   verifier(focus === 'bouton-jouer', 'le bouton Jouer a le focus au chargement', focus);
@@ -51,30 +63,32 @@ async function ordinateur(navigateur) {
   verifier((await etat(page)).enJeu, 'Entrée lance la partie');
 
   await attendre(1000); // préchauffage : les premières images du rendu logiciel sont très lentes
+  // Les durées réelles varient avec le rendu logiciel : on attend des états, pas des durées.
   const e0 = await etat(page);
   await page.keyboard.down('KeyW'); // touche Z sur AZERTY
-  await attendre(1500);
-  const e1 = await etat(page);
-  verifier(e1.x - e0.x > 3, 'Z/W avance vers le monument (+x)', `Δx=${(e1.x - e0.x).toFixed(2)}`);
+  const e1 = await jusqua(page, (e) => e.x - e0.x > 3);
+  verifier(e1.x - e0.x > 3 && e1.vitesse > 3, 'Z/W fait courir vers le monument (+x)', `Δx=${(e1.x - e0.x).toFixed(2)} v=${e1.vitesse.toFixed(2)}`);
 
   // On continue tout droit dans le socle du monument : il doit arrêter le personnage.
-  // Attente jusqu'à l'arrêt (le rendu logiciel est lent, la durée réelle varie).
-  let e2 = await etat(page);
-  for (let i = 0; i < 40; i++) {
-    await attendre(500);
-    const suivant = await etat(page);
-    const immobile = Math.abs(suivant.x - e2.x) < 0.01;
-    e2 = suivant;
-    if (immobile) break;
-  }
+  const e2 = await jusqua(page, (e) => e.x > -10 && e.vitesse < 0.05, 60000);
   await page.keyboard.up('KeyW');
-  verifier(e2.x > -4.1 && e2.x <= -3.5 - 0.45 + 1e-3 && Math.abs(e2.z) < 0.5, 'bloqué contre le socle central, sans le traverser', `x=${e2.x.toFixed(2)} z=${e2.z.toFixed(2)}`);
+  verifier(e2.x > -5.05 && e2.x <= -4.5 - 0.4 + 1e-3 && Math.abs(e2.z) < 0.5, 'bloqué contre le socle central, sans le traverser', `x=${e2.x.toFixed(2)} z=${e2.z.toFixed(2)}`);
 
+  // Maj + avancer = marche.
+  await page.keyboard.down('ShiftLeft');
+  await page.keyboard.down('KeyS');
+  const marche = await jusqua(page, (e) => e2.x - e.x > 1.5);
+  await page.keyboard.up('KeyS');
+  await page.keyboard.up('ShiftLeft');
+  verifier(marche.vitesse > 1 && marche.vitesse < 2.2, 'Maj fait marcher au lieu de courir', `v=${marche.vitesse.toFixed(2)}`);
+  verifier(marche.audio === 'running', "l'audio démarre après le geste « Jouer »", marche.audio);
+  await attendre(600);
+
+  const avantDroite = await etat(page);
   await page.keyboard.down('ArrowRight');
-  await attendre(800);
+  const e3 = await jusqua(page, (e) => e.z - avantDroite.z > 1);
   await page.keyboard.up('ArrowRight');
-  const e3 = await etat(page);
-  verifier(e3.z - e2.z > 1, 'flèche droite déplace sur le côté (+z)', `Δz=${(e3.z - e2.z).toFixed(2)}`);
+  verifier(e3.z - avantDroite.z > 1, 'flèche droite déplace sur le côté (+z)', `Δz=${(e3.z - avantDroite.z).toFixed(2)}`);
 
   await page.keyboard.down('KeyE');
   let e4 = await etat(page);
@@ -82,11 +96,11 @@ async function ordinateur(navigateur) {
   await page.keyboard.up('KeyE');
   verifier(Math.abs(e4.lacetCamera - e3.lacetCamera) > 0.5, 'E tourne la caméra', `Δ=${(e4.lacetCamera - e3.lacetCamera).toFixed(2)}`);
   await page.keyboard.press('KeyC');
-  await attendre(800);
+  await jusqua(page, (e) => ecartAngle(e.lacetCamera, e.cap) < 0.05, 8000);
   const e5 = await etat(page);
-  verifier(Math.abs(e5.lacetCamera - e5.cap) < 0.05, 'C recentre la caméra derrière le personnage', `écart=${Math.abs(e5.lacetCamera - e5.cap).toFixed(3)}`);
+  verifier(ecartAngle(e5.lacetCamera, e5.cap) < 0.05, 'C recentre la caméra derrière le personnage', `écart=${ecartAngle(e5.lacetCamera, e5.cap).toFixed(3)}`);
 
-  await page.screenshot({ path: `${CAPTURES}ordinateur.png` });
+  await page.screenshot({ path: `${CAPTURES}ordinateur.png`, timeout: 60000 });
 
   await page.keyboard.press('Escape');
   await attendre(100);
@@ -106,7 +120,26 @@ async function ordinateur(navigateur) {
   verifier(!(await etat(page)).enJeu, 'perte de focus (appel, notification) → pause');
 
   verifier(erreurs.length === 0, 'aucune erreur console', erreurs.join(' | '));
-  console.log(`   i/s mesurées (Chromium headless, rendu logiciel) : ${(await etat(page)).fps.toFixed(1)}`);
+  const fin = await etat(page);
+  console.log(`   i/s (Chromium headless, rendu logiciel) : ${fin.fps.toFixed(1)} · appels de dessin : ${fin.appelsDessin}`);
+  await page.close();
+}
+
+async function qualiteHaute(navigateur) {
+  console.log('— Qualité haute : chargement et rendu (pas de mesure de fluidité) —');
+  const page = await navigateur.newPage({ viewport: { width: 1280, height: 720 } });
+  const erreurs = [];
+  page.on('pageerror', (e) => erreurs.push(e.message));
+  page.on('console', (m) => { if (m.type() === 'error') erreurs.push(m.text()); });
+  await page.goto(`${URL_JEU}&qualite=haute`);
+  await page.waitForFunction(() => window.__pm3d !== undefined);
+  await page.waitForFunction(() => window.__pm3d.etat().fps > 0, null, { timeout: 90000 });
+  const e = await etat(page);
+  verifier(e.qualite === 'haute', 'qualité haute sélectionnée par paramètre');
+  await page.screenshot({ path: `${CAPTURES}haute.png`, timeout: 90000 });
+  verifier(erreurs.length === 0, 'aucune erreur console en qualité haute', erreurs.join(' | '));
+  const eh = await etat(page);
+  console.log(`   haute : appels de dessin ${eh.appelsDessin}`);
   await page.close();
 }
 
@@ -123,6 +156,7 @@ async function mobile(navigateur) {
   page.on('pageerror', (e) => erreurs.push(e.message));
   await page.goto(URL_JEU);
   await page.waitForFunction(() => window.__pm3d !== undefined);
+  await page.waitForFunction(() => window.__pm3d.etat().fps > 3, null, { timeout: 60000 });
   verifier((await etat(page)).qualite === 'basse', 'qualité basse par défaut sur écran tactile');
   await page.tap('#bouton-jouer');
   await attendre(300);
@@ -181,6 +215,7 @@ try {
   await pret();
   const navigateur = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   await ordinateur(navigateur);
+  await qualiteHaute(navigateur);
   await mobile(navigateur);
   await navigateur.close();
 } catch (e) {

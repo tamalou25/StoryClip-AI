@@ -1,13 +1,15 @@
 // Point d'entrée du client : boucle à pas fixe, menu, pause et interruptions.
 
-import * as pc from 'playcanvas';
 import { CARTE_REPUBLIQUE as carte } from '../sim/carte';
 import { normaliserIntention } from '../sim/intention';
 import { DT, creerMonde, etape, type Monde } from '../sim/monde';
 import { normaliserAngle } from '../sim/math';
-import { creerCamera, directionMonde, majCamera, poseCamera } from './camera';
+import { creerCamera as creerEtatCamera, distanceCible, directionMonde, DISTANCE, lisserDistance, majCamera, poseCamera } from './camera';
 import { Commandes } from './commandes';
-import { construireDecor, creerApplication, ModelePersonnage, type Qualite } from './rendu';
+import { construireDecor } from './decor';
+import { Personnage3D, TENUE_MANIFESTANT } from './personnage';
+import { creerApplication, creerCamera, type Qualite } from './rendu';
+import { Son } from './son';
 
 const ID_JOUEUR = 'joueur';
 const ROTATION_CLAVIER = 2.2; // rad/s
@@ -27,19 +29,23 @@ const boutonPause = el<HTMLButtonElement>('bouton-pause');
 const affichageFps = el<HTMLSpanElement>('fps');
 const bandeauPortrait = el<HTMLParagraphElement>('bandeau-portrait');
 
-const app = creerApplication(canvas, qualite);
-construireDecor(app, carte, qualite);
-const modele = new ModelePersonnage(app, '#d8572a', qualite === 'haute');
+const boutonSon = el<HTMLButtonElement>('bouton-son');
 
-const cameraEntite = new pc.Entity('camera');
-cameraEntite.addComponent('camera', { clearColor: new pc.Color(0.62, 0.74, 0.86), fov: 60, nearClip: 0.1, farClip: 250 });
-app.root.addChild(cameraEntite);
+const app = creerApplication(canvas, qualite);
+const ambiance = construireDecor(app, carte, qualite);
+const modele = new Personnage3D(app, TENUE_MANIFESTANT, true);
+const { entite: cameraEntite } = creerCamera(app, qualite);
+const son = new Son();
+try { son.actif = localStorage.getItem('pm3d-son') !== 'coupe'; } catch { /* stockage indisponible */ }
+modele.onPas = (_cote, intensite) => son.pas(intensite);
 
 const commandes = new Commandes(el('commandes'));
 
 let monde: Monde = creerMonde(carte, [ID_JOUEUR]);
 let precedent: Monde = monde;
-let camera = creerCamera(monde.personnages[ID_JOUEUR]!.cap);
+let camera = creerEtatCamera(monde.personnages[ID_JOUEUR]!.cap);
+let distanceCamera = DISTANCE;
+let fov = 55;
 let accumulateur = 0;
 let enJeu = false;
 let derniereAction = false;
@@ -81,16 +87,24 @@ app.on('update', (dtBrut: number) => {
   const x = a.x + (b.x - a.x) * alpha;
   const z = a.z + (b.z - a.z) * alpha;
   const cap = a.cap + normaliserAngle(b.cap - a.cap) * alpha;
-  modele.majPose(x, z, cap, enJeu ? Math.hypot(b.vx, b.vz) : 0, derniereAction && enJeu, dt);
+  const vitesse = Math.hypot(a.vx + (b.vx - a.vx) * alpha, a.vz + (b.vz - a.vz) * alpha);
+  modele.majPose(x, z, cap, enJeu ? vitesse : 0, derniereAction && enJeu, enJeu ? dt : dt * 0.3);
 
-  const pose = poseCamera(x, z, camera.lacet, carte.obstacles);
+  distanceCamera = lisserDistance(distanceCamera, distanceCible(x, z, camera.lacet, carte.obstacles), dt);
+  const pose = poseCamera(x, z, camera.lacet, carte.obstacles, distanceCamera);
   cameraEntite.setPosition(pose.position.x, pose.position.y, pose.position.z);
   cameraEntite.lookAt(pose.cible.x, pose.cible.y, pose.cible.z);
+  // Léger élargissement du champ en course : sensation de vitesse sans secousse.
+  fov += (55 + Math.min(vitesse, 6) * 0.9 - fov) * Math.min(1, dt * 3);
+  cameraEntite.camera!.fov = fov;
+  ambiance.ciel.setPosition(pose.position.x, 0, pose.position.z);
 
   compterImage(dtBrut);
 });
 
 // ——— Images par seconde (moyenne sur 1 s) ———
+const afficherFps = parametres.has('fps') || parametres.get('test') === '1';
+affichageFps.hidden = !afficherFps;
 let images = 0;
 let tempsFps = 0;
 let fpsMesure = 0;
@@ -99,7 +113,7 @@ function compterImage(dt: number): void {
   tempsFps += dt;
   if (tempsFps >= 1) {
     fpsMesure = images / tempsFps;
-    affichageFps.textContent = `${Math.round(fpsMesure)} i/s · ${qualite}`;
+    if (afficherFps) affichageFps.textContent = `${Math.round(fpsMesure)} i/s · ${qualite}`;
     images = 0;
     tempsFps = 0;
   }
@@ -121,19 +135,35 @@ function afficherMenu(visible: boolean): void {
 }
 afficherMenu(true);
 
+function majBoutonSon(): void {
+  boutonSon.textContent = `Son : ${son.actif ? 'activé' : 'coupé'}`;
+  boutonSon.setAttribute('aria-pressed', String(son.actif));
+}
+majBoutonSon();
+boutonSon.addEventListener('click', () => {
+  son.basculer();
+  try { localStorage.setItem('pm3d-son', son.actif ? 'actif' : 'coupe'); } catch { /* sans effet */ }
+  if (!enJeu) son.suspendre();
+  majBoutonSon();
+});
+
 function jouer(): void {
+  son.demarrer(); // geste utilisateur : l'audio peut démarrer
   enJeu = true;
   accumulateur = 0;
   precedent = monde; // pas d'interpolation vers un état périmé à la reprise
   afficherMenu(false);
   commandes.activer(true);
   (document.activeElement as HTMLElement | null)?.blur(); // le clavier pilote le jeu, pas un bouton
+  // L'aide clavier s'efface après quelques secondes de jeu.
+  window.setTimeout(() => el('aide-clavier').classList.add('estompe'), 8000);
 }
 
 function pause(): void {
   if (!enJeu) return;
   enJeu = false;
   commandes.activer(false);
+  son.suspendre();
   boutonJouer.textContent = 'Reprendre';
   afficherMenu(true);
   boutonJouer.focus();
@@ -176,7 +206,7 @@ if (parametres.get('test') === '1') {
   (window as unknown as Record<string, unknown>).__pm3d = {
     etat: () => {
       const p = monde.personnages[ID_JOUEUR]!;
-      return { x: p.x, z: p.z, cap: p.cap, vitesse: Math.hypot(p.vx, p.vz), lacetCamera: camera.lacet, tick: monde.tick, enJeu, qualite, fps: fpsMesure };
+      return { x: p.x, z: p.z, cap: p.cap, vitesse: Math.hypot(p.vx, p.vz), lacetCamera: camera.lacet, tick: monde.tick, enJeu, qualite, fps: fpsMesure, audio: son.etat(), appelsDessin: (app.stats as unknown as { drawCalls: { total: number } }).drawCalls.total };
     },
   };
 }

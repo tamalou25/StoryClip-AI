@@ -6,9 +6,13 @@ import type { Obstacle } from '../sim/carte';
 import { avant, borner, droite, ecartAngle, lissage, normaliserAngle } from '../sim/math';
 import { VITESSE_MAX } from '../sim/deplacement';
 
-export const DISTANCE = 7;
-export const TANGAGE = 0.38; // radians vers le bas
-export const HAUTEUR_VISEE = 1.6;
+export const DISTANCE = 5.4;
+export const TANGAGE = 0.27; // radians vers le bas
+export const HAUTEUR_VISEE = 1.5;
+/** Décalage latéral de la visée (cadrage « par-dessus l'épaule », personnage légèrement à gauche). */
+export const DECALAGE_EPAULE = 0.45;
+/** Rayon de la « sphère » de caméra : on lance plusieurs rayons pour ne jamais frôler un mur. */
+const RAYON_CAMERA = 0.25;
 export const PAUSE_APRES_MANUEL = 2; // s
 const SUIVI = 1.8; // réactivité du suivi automatique à pleine vitesse (1/s)
 const RECENTRAGE = 10;
@@ -73,14 +77,44 @@ export interface Pose {
   cible: { x: number; y: number; z: number };
 }
 
-/** Position de la caméra, rapprochée si un obstacle masque le personnage. */
-export function poseCamera(px: number, pz: number, lacet: number, obstacles: readonly Obstacle[]): Pose {
-  const cible = { x: px, y: HAUTEUR_VISEE, z: pz };
+/**
+ * Pose de la caméra. `distance` est la distance déjà lissée (voir lisserDistance) ;
+ * sans valeur, on prend la distance libre immédiate.
+ */
+export function poseCamera(px: number, pz: number, lacet: number, obstacles: readonly Obstacle[], distance?: number): Pose {
+  const cible = viseeCamera(px, pz, lacet);
+  const dir = directionCamera(lacet);
+  const d = distance ?? distanceCible(px, pz, lacet, obstacles);
+  return { cible, position: { x: cible.x + dir.x * d, y: Math.max(0.5, cible.y + dir.y * d), z: cible.z + dir.z * d } };
+}
+
+export function viseeCamera(px: number, pz: number, lacet: number): { x: number; y: number; z: number } {
+  const d = droite(lacet);
+  return { x: px + d.x * DECALAGE_EPAULE, y: HAUTEUR_VISEE, z: pz + d.z * DECALAGE_EPAULE };
+}
+
+function directionCamera(lacet: number): { x: number; y: number; z: number } {
   const a = avant(lacet);
-  const dir = { x: -a.x * Math.cos(TANGAGE), y: Math.sin(TANGAGE), z: -a.z * Math.cos(TANGAGE) };
-  const libre = distanceLibre(cible, dir, DISTANCE, obstacles);
-  const d = Math.max(0.4, libre - 0.3);
-  return { cible, position: { x: cible.x + dir.x * d, y: cible.y + dir.y * d, z: cible.z + dir.z * d } };
+  return { x: -a.x * Math.cos(TANGAGE), y: Math.sin(TANGAGE), z: -a.z * Math.cos(TANGAGE) };
+}
+
+/** Distance maximale sans obstacle, testée par 5 rayons (centre + 4 bords) pour éviter les traversées. */
+export function distanceCible(px: number, pz: number, lacet: number, obstacles: readonly Obstacle[]): number {
+  const cible = viseeCamera(px, pz, lacet);
+  const dir = directionCamera(lacet);
+  const d = droite(lacet);
+  let libre = DISTANCE;
+  for (const [ox, oy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+    const o = { x: cible.x + d.x * ox * RAYON_CAMERA, y: cible.y + oy * RAYON_CAMERA, z: cible.z + d.z * ox * RAYON_CAMERA };
+    libre = Math.min(libre, distanceLibre(o, dir, DISTANCE, obstacles));
+  }
+  return Math.max(0.6, libre - RAYON_CAMERA);
+}
+
+/** Lissage asymétrique : la caméra se rapproche vite (pas de mur traversé) et recule doucement. */
+export function lisserDistance(courante: number, cible: number, dt: number): number {
+  const vitesse = cible < courante ? 22 : 2.5;
+  return courante + (cible - courante) * lissage(vitesse, dt);
 }
 
 /** Distance parcourable depuis o dans la direction unitaire dir avant de toucher une boîte (méthode des dalles). */

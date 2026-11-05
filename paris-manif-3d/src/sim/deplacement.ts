@@ -5,10 +5,12 @@ import type { Carte, Obstacle } from './carte';
 import type { Intention } from './intention';
 import { borner, capVers, ecartAngle, lissage, normaliserAngle } from './math';
 
-export const RAYON = 0.45;
-export const VITESSE_MAX = 5.5; // m/s
-export const ACCELERATION = 12; // réactivité de la vitesse (1/s)
-export const ROTATION = 12; // réactivité du cap (1/s)
+export const RAYON = 0.4;
+export const VITESSE_MAX = 5.6; // m/s : course (joystick ou touches à fond)
+export const VITESSE_MARCHE = 1.6; // m/s : intention de longueur ≈ 0,3 (Maj ou joystick peu poussé)
+export const ACCELERATION = 7; // réactivité à l'accélération (1/s) : donne du poids au départ
+export const FREINAGE = 10; // réactivité au freinage (1/s) : arrêt net mais pas instantané
+export const ROTATION = 9; // réactivité du cap (1/s)
 /** Passes de résolution (coins et obstacles voisins). Tous les obstacles bloquent : pas de saut. */
 const PASSES_COLLISION = 3;
 
@@ -28,9 +30,12 @@ export function creerPersonnage(x: number, z: number, cap = 0): Personnage {
 /** Avance un personnage d'un pas dt selon son intention. Ne modifie pas l'entrée. */
 export function avancer(p: Personnage, intention: Intention, dt: number, carte: Carte): Personnage {
   // 1. Vitesse : on tend vers la vitesse voulue (accélération et freinage doux).
-  const k = lissage(ACCELERATION, dt);
-  const vx = p.vx + (intention.dx * VITESSE_MAX - p.vx) * k;
-  const vz = p.vz + (intention.dz * VITESSE_MAX - p.vz) * k;
+  const cibleX = intention.dx * VITESSE_MAX;
+  const cibleZ = intention.dz * VITESSE_MAX;
+  const accelere = Math.hypot(cibleX, cibleZ) > Math.hypot(p.vx, p.vz) - 1e-6;
+  const k = lissage(accelere ? ACCELERATION : FREINAGE, dt);
+  const vx = p.vx + (cibleX - p.vx) * k;
+  const vz = p.vz + (cibleZ - p.vz) * k;
 
   // 2. Cap : le personnage se tourne vers la direction voulue.
   let cap = p.cap;

@@ -2,7 +2,7 @@
 
 Jeu web 3D stylisé : manifestants contre forces de l'ordre, parties de 5 min sur une place compacte inspirée de la place de la République. Mobile (Android, iPhone) et ordinateur.
 
-**État : incrément 1** — scène en volumes simples, personnage, caméra automatique, commandes clavier et tactiles. Pas encore de camps, de bots, d'objectifs ni de réseau.
+**État : incrément 2 (visuel)** — place haussmannienne texturée (dalles, façades, toits à la Mansart, monument, platanes, mobilier), personnage humain animé (repos, marche, course, action), caméra par-dessus l'épaule anti-collision, ambiance sonore synthétisée, menu soigné. Qualités basse/haute réellement différenciées. Pas encore de camps, de bots, d'objectifs ni de réseau.
 
 ## Lancer
 
@@ -20,7 +20,8 @@ Node ≥ 22.12. `.npmrc` contient `legacy-peer-deps=true` (contournement d'un pl
 
 | Action | Ordinateur | Mobile |
 |---|---|---|
-| Bouger | ZQSD (AZERTY), WASD (QWERTY), flèches | Pouce n'importe où dans la moitié gauche (joystick flottant) |
+| Courir | ZQSD (AZERTY), WASD (QWERTY), flèches | Pouce n'importe où dans la moitié gauche (joystick flottant) |
+| Marcher | Maj + direction | Pousser peu le joystick |
 | Caméra manuelle (facultatif) | A / E (AZERTY) = Q / E (QWERTY) | Glisser dans la moitié droite |
 | Recentrer la caméra | C | Bouton « Recentrer » |
 | Action (test : bras levé) | Espace | Bouton « Action » |
