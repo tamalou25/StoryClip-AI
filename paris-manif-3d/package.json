@@ -4,20 +4,31 @@
   "private": true,
   "type": "module",
   "description": "Paris Manif 3D — jeu web 3D stylisé, prototype (incrément 1)",
-  "engines": { "node": ">=22.12.0" },
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
     "dev": "vite --host",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && tsc --noEmit -p tsconfig.server.json && vite build",
     "preview": "vite preview --host",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.server.json",
     "test": "vitest run",
-    "test:e2e": "node e2e/fumee.mjs"
+    "test:e2e": "node e2e/fumee.mjs",
+    "test:multi": "node e2e/multijoueur.mjs",
+    "serveur": "tsx server/index.ts",
+    "serveur:dev": "tsx watch server/index.ts",
+    "serveur:build": "vite build --ssr server/index.ts --outDir dist-serveur --emptyOutDir",
+    "serveur:start": "node dist-serveur/index.js"
   },
   "dependencies": {
-    "playcanvas": "2.23.3"
+    "playcanvas": "2.23.3",
+    "ws": "8.22.0"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
+    "@types/node": "22.20.5",
+    "@types/ws": "8.18.2",
+    "tsx": "4.23.15",
     "typescript": "6.0.3",
     "vite": "8.3.5",
     "vitest": "5.0.5"
