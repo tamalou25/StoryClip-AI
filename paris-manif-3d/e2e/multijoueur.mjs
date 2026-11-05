@@ -17,9 +17,10 @@ const PAGE = `${BASE}/multi.html?test=1&qualite=basse`;
 const CAPTURES = new URL('./captures/', import.meta.url).pathname;
 mkdirSync(CAPTURES, { recursive: true });
 
+// Délai de grâce long : en rendu logiciel, une page rechargée met ~40 s à produire sa première image.
 const serveur = EXTERNE ? null : spawn('node', ['dist-serveur/index.js'], {
   stdio: ['ignore', 'pipe', 'inherit'],
-  env: { ...process.env, PM3D_PORT: String(PORT), PM3D_HOTE: '127.0.0.1', PM3D_STATIQUE: 'dist', PM3D_DUREE_PARTIE_S: '300', PM3D_COMPTE_S: '1', PM3D_GRACE_S: '15' },
+  env: { ...process.env, PM3D_PORT: String(PORT), PM3D_HOTE: '127.0.0.1', PM3D_STATIQUE: 'dist', PM3D_DUREE_PARTIE_S: '300', PM3D_COMPTE_S: '1', PM3D_GRACE_S: '120' },
 });
 const journalServeur = [];
 serveur?.stdout.on('data', (d) => journalServeur.push(...String(d).trim().split('\n')));

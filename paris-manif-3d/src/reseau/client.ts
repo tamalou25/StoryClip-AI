@@ -38,7 +38,11 @@ const OUVERT = 1;
 const PAS_MAX_PAR_APPEL = 8;
 const PERIODE_PING = 2000;
 const SILENCE_MAX = 6000; // ms sans aucun message → connexion considérée comme interrompue
-const RECONNEXION_MAX_DEFAUT = 30000;
+/**
+ * Le serveur reste l'arbitre (« place expirée » après son délai de grâce, 30 s par défaut) ; le client
+ * n'abandonne seul qu'au-delà, au cas où le serveur reste injoignable (ou si la page a été gelée).
+ */
+const RECONNEXION_MAX_DEFAUT = 90000;
 const DELAI_OUVERTURE = 8000; // ms pour établir la connexion
 
 export type EtatConnexion = 'hors_ligne' | 'connexion' | 'en_ligne' | 'reconnexion';
