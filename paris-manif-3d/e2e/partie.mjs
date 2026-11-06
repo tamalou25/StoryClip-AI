@@ -260,7 +260,7 @@ async function mobile(navigateur) {
 
 try {
   await pret();
-  const navigateur = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+  const navigateur = await chromium.launch({ executablePath: process.env.CHROMIUM_EXECUTABLE_PATH || undefined, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   await manifestantsClavier(navigateur);
   await ordreClavier(navigateur);
   await mobile(navigateur);

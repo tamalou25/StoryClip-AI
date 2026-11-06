@@ -2,11 +2,13 @@
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Session } from '../../src/reseau/client';
+import { ZONES_REPUBLIQUE } from '../../src/sim/objectifs';
 import type { ServeurJeu } from '../serveur';
 import { attendre, client, fermerTous, lancer, pause, piloter, salonAvec, serveurDeTest, socketBrute } from './outils';
 
 let serveur: ServeurJeu;
-beforeAll(async () => { serveur = await serveurDeTest({ dureePartieS: 4, graceS: 2 }); });
+beforeAll(async () => { serveur = await serveurDeTest({ dureePartieS: 12, graceS: 2 }); });
+const OUEST = ZONES_REPUBLIQUE[0]!;
 afterAll(async () => { await serveur.fermer(); });
 
 const IMMOBILE = () => ({ dx: 0, dz: 0, action: false });
@@ -27,8 +29,8 @@ describe('déconnexions et reconnexions', () => {
     b!.c.couper(); // comme une perte de réseau
     await attendre(() => presence(a!, idB) === 'reconnexion', 'A voit B en reconnexion');
     await attendre(() => b!.erreurs.some((e) => e.code === 'interrompue' && !e.fatal), 'B informé de la coupure');
-    // Pendant l'absence, un bot serveur pilote le personnage de B (il se dirige vers un objectif).
-    await pause(300);
+    // Pendant l'absence, l'IA des règles pilote le personnage de B (décision toutes les 0,3–0,9 s).
+    await pause(1500);
     const pendant = a!.c.dernierEtat!.j[idB]!;
     expect(Math.hypot(pendant[0] - avant[0], pendant[1] - avant[1])).toBeGreaterThan(0.3);
 
@@ -106,7 +108,7 @@ describe('déconnexions et reconnexions', () => {
     await attendre(() => presence(a!, idB) === 'parti', 'A voit B parti');
     const k = a!.c.dernierEtat!.k;
     await attendre(() => a!.c.dernierEtat!.k > k + 30, 'la partie continue');
-    await attendre(() => a!.fins.length === 1, 'résultat', 8000);
+    await attendre(() => a!.fins.length === 1, 'résultat', 20000);
     stopA();
     const r = a!.fins[0]!;
     expect(r.participants.find((p) => p.id === idB)).toMatchObject({ nom: 'B', bot: true });
@@ -137,11 +139,11 @@ describe('revanche', () => {
     const stopA = piloter(a!, () => {
       const p = a!.c.poseLocale(0);
       if (!p) return IMMOBILE();
-      const d = Math.hypot(-26 - p.x, -8 - p.z);
-      return d < 1 ? IMMOBILE() : { dx: (-26 - p.x) / d, dz: (-8 - p.z) / d, action: false };
+      const d = Math.hypot(OUEST.x - p.x, OUEST.z - p.z);
+      return d < 1 ? IMMOBILE() : { dx: (OUEST.x - p.x) / d, dz: (OUEST.z - p.z) / d, action: false };
     });
     const stopB = piloter(b!, () => ({ dx: -1, dz: 0, action: false })); // B court jusqu'à la fin
-    await attendre(() => a!.fins.length === 1 && b!.fins.length === 1, 'fin de la partie 1', 8000);
+    await attendre(() => a!.fins.length === 1 && b!.fins.length === 1, 'fin de la partie 1', 20000);
     stopA();
     stopB();
     expect(a!.fins[0]!.scores.manifestants).toBeGreaterThan(0);
@@ -173,7 +175,7 @@ describe('revanche', () => {
   it('un joueur qui part aux résultats ne bloque pas la revanche des autres', async () => {
     const [a, b, c] = await salonAvec(serveur.url, [['A', 'manifestants'], ['B', 'forces'], ['C', 'forces']]);
     await lancer([a!, b!, c!]);
-    await attendre(() => a!.fins.length === 1, 'fin', 8000);
+    await attendre(() => a!.fins.length === 1, 'fin', 20000);
     a!.c.pret(true);
     b!.c.pret(true);
     c!.c.quitter(); // C ne vote pas et s'en va

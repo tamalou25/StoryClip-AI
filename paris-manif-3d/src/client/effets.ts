@@ -85,7 +85,8 @@ class AnneauZone {
   }
 }
 
-class Nuage3D {
+/** Nuage de gaz fictif (aussi utilisé par le mode multijoueur, à partir de l'état réseau). */
+export class Nuage3D {
   readonly entite: pc.Entity;
   private readonly mats: pc.StandardMaterial[] = [];
   constructor(app: pc.Application, x: number, z: number, graine: number) {

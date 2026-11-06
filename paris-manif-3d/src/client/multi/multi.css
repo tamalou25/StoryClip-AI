@@ -116,3 +116,7 @@
   .code-salon strong { font-size: 24px; }
   .table-resultats { font-size: 13px; }
 }
+
+.capacites-multi { font-size: 12px; white-space: nowrap; }
+.bandeau-hors-jeu { top: 42%; font-size: 18px; padding: 12px 20px; background: rgb(40 44 60 / 0.9); }
+@media (max-width: 640px) { .capacites-multi { display: none; } }

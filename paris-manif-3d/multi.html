@@ -19,6 +19,10 @@
         <button type="button" tabindex="-1" class="bouton-jeu" data-commande="recentrer" aria-label="Recentrer la caméra">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5a7 7 0 1 1-6.6 4.7" /><path d="M5 4v5h5" /></svg>
         </button>
+        <button type="button" tabindex="-1" class="bouton-jeu bouton-special" data-commande="special" aria-label="Spécial">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.5 6 6.5.6-5 4.3 1.6 6.4L12 17l-5.6 3.3L8 13.9 3 9.6l6.5-.6z" /></svg>
+          <span class="etiquette-bouton" id="etiquette-special">Spécial</span>
+        </button>
         <button type="button" tabindex="-1" class="bouton-jeu bouton-principal" data-commande="action" aria-label="Action">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20V5" /><path d="M7 9l5-5 5 5" /></svg>
         </button>
@@ -35,11 +39,14 @@
         <span class="score forces"><span id="score-f">0</span><span class="pastille"></span></span>
       </div>
       <ol id="objectifs" class="objectifs" aria-label="Objectifs"></ol>
+      <div class="souffle" aria-label="Souffle" title="Souffle"><div class="souffle-barre" id="souffle-multi"></div></div>
+      <span id="capacites-multi" class="info-hud capacites-multi"></span>
       <span id="reseau" class="info-hud reseau" aria-hidden="true"></span>
     </div>
 
     <p id="bandeau-reseau" class="bandeau bandeau-reseau" role="status" aria-live="polite" hidden></p>
     <p id="compte" class="compte" aria-live="assertive" hidden></p>
+    <p id="hors-jeu" class="bandeau bandeau-hors-jeu" role="status" aria-live="polite" hidden></p>
 
     <div id="menu" class="menu" role="dialog" aria-modal="true" aria-labelledby="titre-multi">
       <div class="panneau panneau-multi">

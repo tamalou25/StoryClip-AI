@@ -76,7 +76,7 @@ async function principal() {
   await pret();
   // Un processus Chromium par joueur : contextes totalement indépendants (stockage, sessionStorage),
   // et chaque page reste au premier plan (en headless, une page d'arrière-plan ne rend plus d'images).
-  const navigateurs = await Promise.all([0, 1, 2].map(() => chromium.launch()));
+  const navigateurs = await Promise.all([0, 1, 2].map(() => chromium.launch({ executablePath: process.env.CHROMIUM_EXECUTABLE_PATH || undefined })));
   const ctxA = await navigateurs[0].newContext({ viewport: { width: 800, height: 500 } });
   const ctxB = await navigateurs[1].newContext({ viewport: { width: 800, height: 500 } });
   const ctxC = await navigateurs[2].newContext({ viewport: { width: 800, height: 500 } });
@@ -209,7 +209,7 @@ async function principal() {
   const r2B = await jusqua(B, (e) => e.phase === 'partie' && e.resultat === null, 20000, 'revanche B');
   verifier(r2A.phase === 'partie' && r2B.phase === 'partie', 'la revanche démarre chez les deux');
   verifier(JSON.stringify(r2A.scores) === '[0,0]' && JSON.stringify(r2A.objectifs) === '[0,0,0]', 'aucun état résiduel (scores, objectifs)');
-  verifier(Math.abs(r2A.local.x - -36) < 0.5, 'A repart de son point de départ', r2A.local.x.toFixed(2));
+  verifier(Math.abs(r2A.local.x - -41) < 0.5, 'A repart de son point de départ', r2A.local.x.toFixed(2));
 
   console.log('— 8. Départ d’un participant —');
   await B.keyboard.press('Escape');

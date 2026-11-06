@@ -23,7 +23,7 @@ import {
   type MessageServeur,
 } from '../src/reseau/protocole';
 import type { ReglesPartie } from '../src/reseau/regles';
-import { REGLES_ZONES } from '../src/reseau/regles-zones';
+import { REGLES_MANIF } from '../src/reseau/regles-manif';
 import { FenetreGlissante, SeauJetons } from './limiteur';
 import { Salon, type Connexion, type Journal, type Siege } from './salon';
 import { servirStatique } from './statique';
@@ -65,7 +65,7 @@ export const OPTIONS_DEFAUT: OptionsServeur = {
   confianceProxy: false,
   battementMs: 5000,
   journal: journalConsole,
-  regles: REGLES_ZONES as ReglesPartie<unknown>,
+  regles: REGLES_MANIF as ReglesPartie<unknown>,
 };
 
 const TAMPON_SORTIE_MAX = 256 * 1024; // client trop lent : déconnecté plutôt que de saturer la mémoire

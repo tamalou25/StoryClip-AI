@@ -37,6 +37,20 @@ describe('adaptateur regles-manif (pur)', () => {
   });
 });
 
+describe('spécial et compléments d’état', () => {
+  it('le bouton spécial des forces de l’ordre crée un nuage, visible dans l’état complémentaire', () => {
+    const r = creerReglesManif();
+    let e = r.creer(participants, 60 * FREQUENCE);
+    for (let i = 0; i < 5; i++) e = r.etape(e, { j2: { dx: 0, dz: 0, action: false, special: i === 0 } });
+    const x = r.extra!(e, 'j2');
+    expect(x.nuages).toHaveLength(1);
+    expect(x.charges).toBe(2);
+    expect(x.souffle).toBe(100);
+    expect(x.retour).toBeUndefined();
+    expect(r.extra!(e, 'j1').charges).toBe(1); // slogan prêt
+  });
+});
+
 describe('serveur + règles complètes', () => {
   let serveur: ServeurJeu;
   beforeAll(async () => { serveur = await serveurDeTest({ regles: creerReglesManif() as ReglesPartie<unknown>, dureePartieS: 10 }); });
@@ -57,6 +71,8 @@ describe('serveur + règles complètes', () => {
     stopA();
     stopB();
     expect(b!.fins[0]).toEqual(a!.fins[0]);
+    expect(a!.c.dernierEtat!.x?.souffle).toBeDefined();
+    expect(a!.c.dernierEtat!.x?.mobilisation).toBeDefined();
     console.log('résultat règles complètes :', JSON.stringify(a!.fins[0]!.scores), a!.fins[0]!.gagnant, 'corrections A :', a!.c.statsCorrections.corrections);
     a!.c.pret(true);
     b!.c.pret(true);

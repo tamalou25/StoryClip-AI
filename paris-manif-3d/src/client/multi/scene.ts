@@ -3,7 +3,9 @@
 
 import * as pc from 'playcanvas';
 import type { Camp, EtatObjectif, ObjectifVue, ParticipantVue } from '../../reseau/protocole';
+import { Nuage3D } from '../effets';
 import { Personnage3D } from '../personnage';
+import type { ExtraEtat } from '../../reseau/protocole';
 
 /**
  * Teintes du modèle de personnage par camp (matériaux nommés du glTF, voir src/client/main.ts) :
@@ -30,6 +32,9 @@ interface Entree {
 export class SceneMulti {
   private readonly personnages = new Map<string, Entree>();
   private zones: { entite: pc.Entity; materiau: pc.StandardMaterial; etat: EtatObjectif }[] = [];
+  private readonly nuages = new Map<string, Nuage3D>();
+  /** Opacité maximale des nuages (option « réduire les effets »). */
+  opaciteGaz = 0.55;
   private temps = 0;
   private readonly ecran = new pc.Vec3();
   private readonly monde = new pc.Vec3();
@@ -106,7 +111,21 @@ export class SceneMulti {
     }
   }
 
+  /** Nuages de gaz fictif d'après l'état réseau ([id, x, z, reste, durée]). */
+  majNuages(nuages: NonNullable<ExtraEtat['nuages']> | undefined, tick: number): void {
+    const vus = new Set<string>();
+    for (const [id, x, z, reste, duree] of nuages ?? []) {
+      vus.add(id);
+      let n = this.nuages.get(id);
+      if (!n) { n = new Nuage3D(this.app, x, z, id.length * 7919 + tick); this.nuages.set(id, n); }
+      n.maj(reste, duree, this.opaciteGaz);
+    }
+    for (const [id, n] of this.nuages) if (!vus.has(id)) { n.detruire(); this.nuages.delete(id); }
+  }
+
   vider(): void {
+    for (const n of this.nuages.values()) n.detruire();
+    this.nuages.clear();
     for (const e of this.personnages.values()) {
       e.modele.racine.destroy();
       e.etiquette.remove();
