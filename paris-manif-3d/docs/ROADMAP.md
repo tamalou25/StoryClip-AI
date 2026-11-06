@@ -50,3 +50,28 @@ Menu complet au clavier et au toucher : accueil → choix du camp → partie (mi
 | Appels de dessin mesurés (Chromium headless) | 135 | 598 |
 
 Les i/s ne sont pas mesurables ici (rendu logiciel) : à mesurer sur un vrai téléphone en priorité.
+
+## Incrément 2c — décor Blender (05–06/11/2026)
+
+### Mesures (Chromium headless, rendu WebGL logiciel SwiftShader — PAS un appareil réel)
+`node e2e/mesures.mjs` : basse en émulation Pixel 7 paysage (915 × 412), haute en 1280 × 720.
+
+| Mesure | Basse (avant → après) | Haute (avant → après) | Budget retenu |
+|---|---|---|---|
+| Téléchargé au lancement | 7,6 → **7,0 Mo** | 16,4 → **15,6 Mo** | basse ≤ 8 Mo, haute ≤ 20 Mo |
+| Appels de rendu (vue générale) | 413 → **183** | 841 → **438** | basse ≤ 200, haute ≤ 500 |
+| Triangles de la scène (toute la couche, sans élimination) | — → **265 000** | — → **814 000** | basse ≤ 300 000, haute ≤ 1 000 000 |
+| Mémoire GPU déclarée des textures | 49,6 → **36,9 Mo** | 245 → **159 Mo** | basse ≤ 40 Mo, haute ≤ 200 Mo |
+| Mémoire GPU de géométrie | 13,4 → **12,5 Mo** | 38,6 → **43,2 Mo** | — |
+| Chargement (serveur local) | **0,34 s** | **0,67 s** | sans valeur pour un réseau mobile |
+
+« Avant » = premières mesures de cet incrément, avant les corrections (lots de rendu par cellules de 200 m,
+cube de ciel 256/512 px au lieu de 512/1024, dalles 1024 px au lieu de 2048, atlas des devantures réduit en basse,
+équirectangulaire du ciel libéré après génération, niveaux bas du banc et de la statue allégés).
+Temps par image non publiés : sous rendu logiciel ils dépendent surtout du nombre de pixels et ne disent rien
+d'un GPU de téléphone. **Mesure sur téléphones réels à faire.**
+
+### Pistes restantes pour le mobile
+- Compression GPU des textures (KTX2/Basis) : la mémoire des textures est aujourd'hui non compressée (RGBA8).
+- Niveaux de détail selon la distance (aujourd'hui, uniquement selon la qualité choisie).
+- Ombres : une seule cascade de 30 m en basse ; à désactiver si un téléphone de référence passe sous 30 i/s.
