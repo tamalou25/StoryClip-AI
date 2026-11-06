@@ -3,7 +3,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { VITESSE_MAX } from '../../src/sim/deplacement';
 import { FERMETURE, type MessageServeur } from '../../src/reseau/protocole';
+import { pointDepart } from '../../src/sim/objectifs';
+import { CARTE_REPUBLIQUE } from '../../src/sim/carte';
 import { adresse, type ServeurJeu } from '../serveur';
+const DEPART_M = pointDepart('manif', 0, CARTE_REPUBLIQUE);
 import { attendre, client, fermerTous, lancer, pause, piloter, salonAvec, serveurDeTest, socketBrute } from './outils';
 
 let serveur: ServeurJeu;
@@ -167,7 +170,7 @@ describe('isolation de plusieurs salons', () => {
       // Ce que l'invité voit de son hôte suit la direction propre à ce salon.
       const vu = inv!.c.dernierEtat!.j[h!.c.id!]!;
       const [dx, dz] = directions[i]!;
-      const depl = { x: vu[0] - -36, z: vu[1] - -1.5 };
+      const depl = { x: vu[0] - DEPART_M.x, z: vu[1] - DEPART_M.z };
       if (dx !== 0) expect(Math.sign(depl.x)).toBe(dx);
       else expect(Math.abs(depl.x)).toBeLessThan(0.01);
       if (dz !== 0) expect(Math.sign(depl.z)).toBe(dz);

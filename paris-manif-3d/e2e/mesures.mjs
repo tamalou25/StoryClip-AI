@@ -46,7 +46,7 @@ try {
     try { if ((await fetch(`http://localhost:${PORT}/`)).ok) break; } catch { /* pas prêt */ }
     await attendre(200);
   }
-  const navigateur = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+  const navigateur = await chromium.launch({ executablePath: process.env.CHROMIUM_EXECUTABLE_PATH || undefined, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const resultats = [];
   resultats.push(await mesurer(navigateur, 'basse', true));
   resultats.push(await mesurer(navigateur, 'haute', false));

@@ -1,0 +1,56 @@
+# Validation automatique de paris-manif-3d : tests, TypeScript, builds client et serveur, tests navigateur.
+name: Validation du jeu
+
+on:
+  push:
+    paths: ['paris-manif-3d/**', '.github/workflows/validation-jeu.yml']
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: paris-manif-3d
+
+jobs:
+  tests:
+    name: Tests, TypeScript, builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.12'
+          cache: npm
+          cache-dependency-path: paris-manif-3d/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run serveur:build
+
+  navigateur:
+    name: Tests navigateur (solo et multijoueur)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.12'
+          cache: npm
+          cache-dependency-path: paris-manif-3d/package-lock.json
+      - run: npm ci
+      - name: Chromium (version épinglée par @playwright/test)
+        run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: npm run serveur:build
+      - name: Fumée solo et partie complète
+        run: npm run test:e2e
+      - name: Multijoueur, trois navigateurs indépendants
+        run: npm run test:multi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: captures-e2e
+          path: paris-manif-3d/e2e/captures/
+          if-no-files-found: ignore

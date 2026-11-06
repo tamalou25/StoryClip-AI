@@ -31,7 +31,7 @@ try {
     try { if ((await fetch(`http://localhost:${PORT}/`)).ok) break; } catch { /* pas prêt */ }
     await attendre(200);
   }
-  const navigateur = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+  const navigateur = await chromium.launch({ executablePath: process.env.CHROMIUM_EXECUTABLE_PATH || undefined, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const page = await navigateur.newPage({ viewport: { width: 1280, height: 720 } });
   const erreurs = [];
   page.on('pageerror', (e) => erreurs.push(e.message));

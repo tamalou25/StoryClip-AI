@@ -12,6 +12,12 @@ Rythme : 5–10 h/semaine. Heures = travail humain (pilotage, essais, relecture)
 | 6 | 8 bots, navigation, déblocage | 20–35 | ⬜ |
 | 7 | Salons privés, objectifs synchronisés, départs, reconnexion | 20–35 | 🟡 fait avec des règles provisoires ; raccordement aux règles complètes à faire (voir `docs/RESEAU.md`) |
 | 8 | Gaz fictif et cordon (contre-jeu, sortie) | 12–20 | ⬜ |
+| 3 | Commandes tactiles/clavier, menus, écrans | 12–20 | ✅ accueil, camp, pause, résultat, revanche, options |
+| 4 | Essai réseau : 2 clients, serveur autoritaire (Colyseus) | 20–30 | ⬜ |
+| 5 | Partie complète 5 min, deux camps, victoire, revanche | 20–30 | ✅ solo (voir docs/REGLES.md) |
+| 6 | 8 bots, navigation, déblocage | 20–35 | ✅ 10 bots, A*, déblocage, 3 difficultés |
+| 7 | Salons privés, objectifs synchronisés, départs, reconnexion | 20–35 | ⬜ |
+| 8 | Gaz fictif et cordon (contre-jeu, sortie) | 12–20 | ✅ gaz, cordon, slogan, rassemblement |
 | 9 | Décor parisien, animations, optimisation, tests réels | 30–48 | ⬜ |
 | | **Total** | **150–240** (190–300 avec marge) | |
 
@@ -80,3 +86,7 @@ d'un GPU de téléphone. **Mesure sur téléphones réels à faire.**
 - Compression GPU des textures (KTX2/Basis) : la mémoire des textures est aujourd'hui non compressée (RGBA8).
 - Niveaux de détail selon la distance (aujourd'hui, uniquement selon la qualité choisie).
 - Ombres : une seule cascade de 30 m en basse ; à désactiver si un téléphone de référence passe sous 30 i/s.
+## Partie solo complète (05/11/2026)
+- Incréments 3, 5, 6 et 8 livrés en solo dans la même session (session « gameplay », en parallèle de la session « graphismes »).
+- Validé : Vitest (règles, bots, navigation, parties complètes bots contre bots), build, Playwright (fumée + partie complète pour les deux camps, clavier puis Pixel 7 émulé). Aucun essai sur téléphone réel.
+- Restant : incrément 4 (réseau, Colyseus) puis 7 (salons). Prochaine amélioration la plus utile côté solo : mesurer sur un vrai téléphone (11 personnages articulés ≈ 280–430 appels de dessin en qualité basse) et, si besoin, un niveau de détail réduit pour les bots lointains.

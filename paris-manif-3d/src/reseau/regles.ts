@@ -5,7 +5,7 @@
 
 import type { Personnage } from '../sim/deplacement';
 import type { Intention } from '../sim/intention';
-import type { Camp, EtatObjectif, ObjectifVue } from './protocole';
+import type { Camp, EtatObjectif, ExtraEtat, ObjectifVue } from './protocole';
 
 export interface ParticipantRegles {
   id: string;
@@ -58,4 +58,6 @@ export interface ReglesPartie<E> {
   resultat(etat: E): ScoresFinaux | null;
   /** Déplacement d'un personnage pour un pas : utilisé tel quel par la prédiction locale du client. */
   deplacer(p: Personnage, intention: Intention): Personnage;
+  /** Compléments d'état pour le HUD du destinataire `id` (facultatif). */
+  extra?(etat: E, id: string): ExtraEtat;
 }

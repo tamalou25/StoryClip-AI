@@ -11,7 +11,7 @@ import { creerMonde, DT, etape as etapeMonde, FREQUENCE, type Monde } from '../s
 import { ZONES_REPUBLIQUE } from '../sim/objectifs';
 import type { Acteur } from '../sim/partie';
 import type { Camp as CampSim, Reglages } from '../sim/regles';
-import type { Camp, EtatObjectif, ObjectifVue } from './protocole';
+import type { Camp, EtatObjectif, ExtraEtat, ObjectifVue } from './protocole';
 import type { ControlePas, ParticipantRegles, ReglesPartie, ScoresFinaux, VueJeu } from './regles';
 
 const VERS_SIM: Record<Camp, CampSim> = { manifestants: 'manif', forces: 'ordre' };
@@ -118,6 +118,24 @@ export function creerReglesManif(options: OptionsReglesManif = {}): ReglesPartie
         scores: scores(monde),
         objectifs: monde.zones.map((z): EtatObjectif => (z.presents.manif > 0 && z.presents.ordre > 0 ? 3 : z.tenue === 'manif' ? 1 : z.tenue === 'ordre' ? 2 : 0)),
       };
+    },
+
+    extra(etat: EtatManif, id: string): ExtraEtat {
+      const { monde } = etat;
+      const a = monde.acteurs[id];
+      const x: ExtraEtat = {
+        mobilisation: Math.min(1, monde.partie.mobilisation / monde.partie.cibleMobilisation),
+        horsJeu: monde.ordre.filter((i) => monde.acteurs[i]!.etat === 'hors-jeu'),
+        nuages: monde.nuages.map((n) => [n.id, Math.round(n.x * 10) / 10, Math.round(n.z * 10) / 10, Math.round(n.reste * 10) / 10, n.duree]),
+      };
+      if (a) {
+        x.souffle = Math.round(a.souffle);
+        if (a.etat === 'hors-jeu') x.retour = Math.ceil(a.retour);
+        x.charges = a.camp === 'ordre' ? a.charges : a.recharge <= 0 ? 1 : 0;
+        x.recharge = Math.ceil(a.recharge);
+      }
+      if (monde.partie.raison) x.raison = monde.partie.raison;
+      return x;
     },
 
     resultat(etat: EtatManif): ScoresFinaux | null {

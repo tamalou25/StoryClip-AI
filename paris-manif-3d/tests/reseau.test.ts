@@ -17,6 +17,8 @@ describe('protocole', () => {
     expect(i.dx).toBeCloseTo(0.6, 12);
     expect(i.dz).toBeCloseTo(0.8, 12);
     expect(validerMessageClient({ t: 'profil', camp: 'manifestants' })).toEqual({ t: 'profil', camp: 'manifestants' });
+    expect(validerMessageClient({ t: 'i', s: 4, dx: 0, dz: 0, p: true })).toEqual({ t: 'i', s: 4, dx: 0, dz: 0, a: false, p: true });
+    expect(validerMessageClient({ t: 'i', s: 4, dx: 0, dz: 0, p: 1 })).toBeNull();
   });
 
   it.each([

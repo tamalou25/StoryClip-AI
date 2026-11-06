@@ -173,7 +173,7 @@ export class Salon {
     const c = siege.connexion;
     switch (m.t) {
       case 'i':
-        this.recevoirIntention(siege, m.s, { dx: m.dx, dz: m.dz, action: m.a });
+        this.recevoirIntention(siege, m.s, m.p ? { dx: m.dx, dz: m.dz, action: m.a, special: true } : { dx: m.dx, dz: m.dz, action: m.a });
         return;
       case 'ping':
         c?.envoyer({ t: 'pong', c: m.c, k: this.tickCourant() });
@@ -512,6 +512,7 @@ export class Salon {
       s: [vue.scores.manifestants, vue.scores.forces],
       z: [...vue.objectifs],
       r: vue.restant,
+      ...(this.options.regles.extra ? { x: this.options.regles.extra(this.etatJeu, siege.id) } : {}),
     });
   }
 

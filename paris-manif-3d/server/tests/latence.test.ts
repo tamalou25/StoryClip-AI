@@ -2,11 +2,13 @@
 // Mesure ce que la prédiction apporte réellement : délai entre l'appui et le mouvement affiché.
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { ZONES_REPUBLIQUE } from '../../src/sim/objectifs';
 import type { ServeurJeu } from '../serveur';
 import { attendre, fermerTous, lancer, pause, piloter, salonAvec, serveurDeTest, type ClientTest } from './outils';
 
 let serveur: ServeurJeu;
-beforeAll(async () => { serveur = await serveurDeTest({ dureePartieS: 6 }); });
+beforeAll(async () => { serveur = await serveurDeTest({ dureePartieS: 15 }); });
+const OUEST = ZONES_REPUBLIQUE[0]!;
 afterAll(async () => { await serveur.fermer(); });
 
 const LATENCE = { latenceMs: 75, gigueMs: 20 }; // par sens : RTT ≈ 150–190 ms
@@ -98,12 +100,12 @@ describe('sous latence (RTT ≈ 150 ms, gigue ±20 ms)', () => {
       piloter(a!, () => {
         const p = a!.c.poseLocale(0);
         if (!p) return IMMOBILE();
-        const d = Math.hypot(-26 - p.x, -8 - p.z);
-        return d < 1 ? IMMOBILE() : { dx: (-26 - p.x) / d, dz: (-8 - p.z) / d, action: false };
+        const d = Math.hypot(OUEST.x - p.x, OUEST.z - p.z);
+        return d < 1 ? IMMOBILE() : { dx: (OUEST.x - p.x) / d, dz: (OUEST.z - p.z) / d, action: false };
       }),
       piloter(b!, () => ({ dx: -0.7, dz: -0.7, action: true })),
     ]);
-    await attendre(() => salons.flat().every((t) => t.fins.length === 1), 'fin dans les trois salons', 15000);
+    await attendre(() => salons.flat().every((t) => t.fins.length === 1), 'fin dans les trois salons', 30000);
     for (const f of arrets) f();
     for (const [a, b] of salons) {
       expect(b!.fins[0]).toEqual(a!.fins[0]);

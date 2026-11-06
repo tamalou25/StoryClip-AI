@@ -7,8 +7,9 @@
 
 import { CARTE_REPUBLIQUE as carte } from '../../sim/carte';
 import { ClientReseau, MESSAGES_CLIENT, type Session } from '../../reseau/client';
-import { CHEMIN_WS, NOM_CAMP, normaliserCode, type Camp, type ResultatPartie, type VueSalon } from '../../reseau/protocole';
-import { REGLES_ZONES } from '../../reseau/regles-zones';
+import { CHEMIN_WS, NOM_CAMP, normaliserCode, type Camp, type ExtraEtat, type ResultatPartie, type VueSalon } from '../../reseau/protocole';
+import { CAPACITES } from '../hud';
+import { REGLES_MANIF } from '../../reseau/regles-manif';
 import { FREQUENCE } from '../../sim/monde';
 import { creerCamera as creerEtatCamera, directionMonde, distanceCible, DISTANCE, lisserDistance, majCamera, poseCamera } from '../camera';
 import { Commandes } from '../commandes';
@@ -62,10 +63,26 @@ const $ = {
   minuteur: el('minuteur'),
   objectifs: el<HTMLOListElement>('objectifs'),
   reseau: el('reseau'),
+  souffle: el('souffle-multi'),
+  capacites: el('capacites-multi'),
+  horsJeu: el('hors-jeu'),
+  etiquetteSpecial: el('etiquette-special'),
 };
 
 // ——— Réseau ———
-const urlServeur = parametres.get('serveur') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}${CHEMIN_WS}`;
+// Serveur de jeu : ?serveur=, sinon celui saisi dans l'accueil, sinon VITE_SERVEUR_WS (défini au build pour
+// une publication statique), sinon la même origine (relais /ws de Vite ou serveur Node qui sert dist/).
+const serveurBuild = (import.meta.env.VITE_SERVEUR_WS as string | undefined) || '';
+const champServeur = el<HTMLInputElement>('champ-serveur');
+try { champServeur.value = parametres.get('serveur') ?? localStorage.getItem('pm3d-serveur') ?? serveurBuild; } catch { champServeur.value = parametres.get('serveur') ?? serveurBuild; }
+const publicationStatique = location.hostname.endsWith('github.io');
+el('aide-serveur').hidden = !publicationStatique;
+function urlServeur(): string {
+  const saisi = champServeur.value.trim();
+  try { localStorage.setItem('pm3d-serveur', saisi); } catch { /* sans effet */ }
+  if (saisi) return /^wss?:\/\//.test(saisi) ? saisi : `${saisi.startsWith('localhost') || /^\d/.test(saisi) ? 'ws' : 'wss'}://${saisi.replace(/\/+$/, '')}${saisi.includes('/ws') ? '' : CHEMIN_WS}`;
+  return `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}${CHEMIN_WS}`;
+}
 const rtt = Number(parametres.get('latence') ?? 0);
 const gigue = Number(parametres.get('gigue') ?? 0);
 const stockage = {
@@ -83,8 +100,8 @@ const stockage = {
   },
 };
 const client = new ClientReseau({
-  url: urlServeur,
-  regles: REGLES_ZONES,
+  get url() { return urlServeur(); },
+  regles: REGLES_MANIF,
   stockage,
   prediction: parametres.get('prediction') !== '0',
   latenceMs: Number.isFinite(rtt) && rtt > 0 ? rtt / 2 : 0,
@@ -121,6 +138,7 @@ const TEINTES_PASSANTS: Record<string, string>[] = [
 for (const p of carte.passants) passant(app, res.passant, p.x, p.z, p.regard, TEINTES_PASSANTS[p.variante % TEINTES_PASSANTS.length]!, (p.variante * 0.37) % 1);
 const { entite: cameraEntite } = creerCamera(app, qualite);
 const scene = new SceneMulti(app, el('etiquettes'), res.manifestant);
+try { if (localStorage.getItem('pm3d-reduire-effets') === '1') scene.opaciteGaz = 0.3; } catch { /* sans effet */ }
 const commandes = new Commandes(el('commandes'));
 
 let camera = creerEtatCamera(-Math.PI / 2);
@@ -262,6 +280,8 @@ client.evenements.salon = (s) => {
 };
 client.evenements.debut = (info) => {
   scene.preparer(info.participants, info.objectifs, client.id);
+  $.horsJeu.hidden = true;
+  majExtra(undefined);
   $.objectifs.replaceChildren(...info.objectifs.map((o) => {
     const li = document.createElement('li');
     li.textContent = o.id;
@@ -278,7 +298,35 @@ client.evenements.etat = (m) => {
   $.scoreF.textContent = String(m.s[1]);
   $.minuteur.textContent = formaterTemps(m.r);
   m.z.forEach((z, i) => { const li = $.objectifs.children[i] as HTMLElement | undefined; if (li) li.dataset.etat = String(z); });
+  majExtra(m.x);
+  scene.majNuages(m.x?.nuages, m.k);
 };
+
+/** Compléments des règles complètes : souffle, hors-jeu, charges du spécial (absents avec d'autres règles). */
+function majExtra(x: ExtraEtat | undefined): void {
+  const souffle = x?.souffle;
+  $.souffle.parentElement!.hidden = souffle === undefined;
+  if (souffle !== undefined) {
+    $.souffle.style.width = `${souffle}%`;
+    $.souffle.classList.toggle('faible', souffle < 50 && souffle >= 25);
+    $.souffle.classList.toggle('critique', souffle < 25);
+  }
+  const horsJeu = x?.retour !== undefined;
+  $.horsJeu.hidden = !horsJeu || client.salon?.phase !== 'partie';
+  if (horsJeu) $.horsJeu.textContent = `${monCamp() === 'forces' ? 'En repli' : 'Dispersé'} · retour dans ${x!.retour} s`;
+  const camp = monCamp();
+  if (x?.charges !== undefined && camp) {
+    const c = CAPACITES[camp === 'forces' ? 'ordre' : 'manif'];
+    $.capacites.textContent = camp === 'forces' ? `${c.special} : ${x.charges} charge${x.charges > 1 ? 's' : ''}` : x.charges > 0 ? `${c.special} prêt` : `${c.special} dans ${x.recharge} s`;
+    $.etiquetteSpecial.textContent = c.special;
+    el('commandes').querySelector('[data-commande="special"]')?.classList.toggle('indisponible', x.charges <= 0);
+  } else {
+    $.capacites.textContent = '';
+  }
+}
+function monCamp(): Camp | null {
+  return client.partie?.participants.find((p) => p.id === client.id)?.camp ?? null;
+}
 client.evenements.fin = (r) => {
   majResultat(r);
   menuJeuOuvert = false;
@@ -383,7 +431,7 @@ app.on('update', (dtMoteur: number) => {
     recentrer: enPartie && c.recentrer,
   }, dt);
   const dir = enPartie ? directionMonde(c.jx, c.jy, camera.lacet) : { dx: 0, dz: 0 };
-  client.avancer(dt, { dx: dir.dx, dz: dir.dz, action: enPartie && c.action });
+  client.avancer(dt, { dx: dir.dx, dz: dir.dz, action: enPartie && c.action, special: enPartie && c.special });
 
   if (client.partie && client.id) {
     scene.majPersonnage(client.id, pose.x, pose.z, pose.cap, pose.vitesse, client.actionLocale && enPartie, dt);

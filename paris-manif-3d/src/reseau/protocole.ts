@@ -35,7 +35,7 @@ export type MessageClient =
   | { t: 'pret'; pret: boolean }
   | { t: 'demarrer' }
   /** Intention d'un pas : s = numéro de séquence croissant, a = action maintenue. */
-  | { t: 'i'; s: number; dx: number; dz: number; a: boolean }
+  | { t: 'i'; s: number; dx: number; dz: number; a: boolean; p?: boolean }
   | { t: 'quitter' }
   | { t: 'ping'; c: number };
 
@@ -48,7 +48,7 @@ const CLES: Record<TypeMessageClient, { requises: string[]; facultatives: string
   profil: { requises: [], facultatives: ['nom', 'camp'] },
   pret: { requises: ['pret'], facultatives: [] },
   demarrer: { requises: [], facultatives: [] },
-  i: { requises: ['s', 'dx', 'dz'], facultatives: ['a'] },
+  i: { requises: ['s', 'dx', 'dz'], facultatives: ['a', 'p'] },
   quitter: { requises: [], facultatives: [] },
   ping: { requises: ['c'], facultatives: [] },
 };
@@ -105,8 +105,9 @@ export function validerMessageClient(brut: unknown): MessageClient | null {
       if (typeof o.dx !== 'number' || typeof o.dz !== 'number') return null;
       if (!Number.isFinite(o.dx) || !Number.isFinite(o.dz)) return null;
       if (o.a !== undefined && typeof o.a !== 'boolean') return null;
+      if (o.p !== undefined && typeof o.p !== 'boolean') return null;
       const n = normaliserIntention({ dx: o.dx, dz: o.dz, action: o.a === true });
-      return { t: 'i', s: o.s, dx: n.dx, dz: n.dz, a: n.action };
+      return o.p === true ? { t: 'i', s: o.s, dx: n.dx, dz: n.dz, a: n.action, p: true } : { t: 'i', s: o.s, dx: n.dx, dz: n.dz, a: n.action };
     }
     case 'quitter':
       return { t: 'quitter' };
@@ -221,6 +222,27 @@ export interface MessageEtat {
   z: EtatObjectif[];
   /** Ticks restants. */
   r: number;
+  /** État propre aux règles (facultatif) : souffle, hors-jeu, nuages… voir `ExtraEtat`. */
+  x?: ExtraEtat;
+}
+
+/** Compléments d'état des règles complètes, pour le HUD et les effets (tous facultatifs). */
+export interface ExtraEtat {
+  /** Souffle du destinataire, 0–100. */
+  souffle?: number;
+  /** Secondes avant le retour du destinataire s'il est hors-jeu, sinon absent. */
+  retour?: number;
+  /** Charges de spécial / secondes de recharge du destinataire. */
+  charges?: number;
+  recharge?: number;
+  /** Mobilisation des manifestants, 0–1. */
+  mobilisation?: number;
+  /** Participants hors-jeu (identifiants). */
+  horsJeu?: string[];
+  /** Nuages de gaz fictif : [id, x, z, reste (s), durée (s)]. */
+  nuages?: [string, number, number, number, number][];
+  /** Dernière raison de fin (résultats). */
+  raison?: string;
 }
 
 export type CodeErreur =

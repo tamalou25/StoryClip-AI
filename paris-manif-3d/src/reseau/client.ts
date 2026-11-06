@@ -241,7 +241,7 @@ export class ClientReseau {
     let pas = 0;
     while (this.accumulateur >= DT && pas < PAS_MAX_PAR_APPEL) {
       this.seq++;
-      this.envoyer({ t: 'i', s: this.seq, dx: intention.dx, dz: intention.dz, a: intention.action });
+      this.envoyer(intention.special ? { t: 'i', s: this.seq, dx: intention.dx, dz: intention.dz, a: intention.action, p: true } : { t: 'i', s: this.seq, dx: intention.dx, dz: intention.dz, a: intention.action });
       this.stats.intentions++;
       if (this.prediction) this.predicteur.appliquer(this.seq, intention);
       this.accumulateur -= DT;

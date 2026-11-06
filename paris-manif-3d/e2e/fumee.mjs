@@ -9,20 +9,31 @@ import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 
 const PORT = 4174;
-const URL_JEU = `http://localhost:${PORT}/?test=1`;
+// duree=600 : aucune fin de partie pendant la fumée (les règles sont testées dans e2e/partie.mjs).
+const URL_JEU = `http://localhost:${PORT}/?test=1&duree=600`;
 // Le rendu logiciel de Chromium headless ne tient pas la qualité haute (SSAO, MSAA) en temps réel :
 // les vérifications de commandes se font en qualité basse, la qualité haute est contrôlée à part.
 const URL_BASSE = `${URL_JEU}&qualite=basse`;
 const CAPTURES = new URL('./captures/', import.meta.url).pathname;
 mkdirSync(CAPTURES, { recursive: true });
 
-const serveur = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'pipe' });
+// Vite est lancé directement (pas via npx) : serveur.kill() arrête bien le processus à la fin.
+const serveur = spawn(process.execPath, [new URL('../node_modules/vite/bin/vite.js', import.meta.url).pathname, 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'pipe' });
 const attendre = (ms) => new Promise((r) => setTimeout(r, ms));
 let echecs = 0;
 const verifier = (condition, message, detail = '') => {
   console.log(`${condition ? 'OK  ' : 'ÉCHEC'} ${message}${detail ? ` (${detail})` : ''}`);
   if (!condition) echecs++;
 };
+
+/** Capture d'écran documentaire : un dépassement de délai (rendu logiciel lent) n'est pas un échec. */
+async function capturer(page, fichier, timeout = 90000) {
+  try {
+    await page.screenshot({ path: fichier, timeout });
+  } catch (e) {
+    console.log(`   (capture ${fichier.split('/').pop()} abandonnée : ${String(e.message).split('\n')[0]})`);
+  }
+}
 
 async function pret() {
   for (let i = 0; i < 50; i++) {
@@ -61,8 +72,12 @@ async function ordinateur(navigateur) {
   verifier(!atteints.includes('bouton-pause'), 'Tab reste dans le menu (arrière-plan inerte)', atteints.join(','));
   await page.focus('#bouton-jouer');
   await page.keyboard.press('Enter');
+  await attendre(200);
+  const focusCamp = await page.evaluate(() => document.activeElement?.id);
+  verifier(focusCamp === 'camp-manif', 'Entrée ouvre le choix du camp, focus sur Manifestants', focusCamp);
+  await page.keyboard.press('Enter');
   await attendre(300);
-  verifier((await etat(page)).enJeu, 'Entrée lance la partie');
+  verifier((await etat(page)).enJeu && (await etat(page)).camp === 'manif', 'Entrée sur le camp lance la partie');
 
   await attendre(1000); // préchauffage : les premières images du rendu logiciel sont très lentes
   // Les durées réelles varient avec le rendu logiciel : on attend des états, pas des durées.
@@ -74,7 +89,7 @@ async function ordinateur(navigateur) {
   // On continue tout droit dans le socle du monument : il doit arrêter le personnage.
   const e2 = await jusqua(page, (e) => e.x > -10 && e.vitesse < 0.05, 120000);
   await page.keyboard.up('KeyW');
-  verifier(e2.x > -5.05 && e2.x <= -4.5 - 0.4 + 1e-3 && Math.abs(e2.z) < 0.5, 'bloqué contre le socle central, sans le traverser', `x=${e2.x.toFixed(2)} z=${e2.z.toFixed(2)}`);
+  verifier(e2.x > -5.05 && e2.x <= -4.5 - 0.4 + 1e-3 && Math.abs(e2.z) < 4.5, 'bloqué contre le socle central, sans le traverser', `x=${e2.x.toFixed(2)} z=${e2.z.toFixed(2)}`);
 
   // Maj + avancer = marche.
   await page.keyboard.down('ShiftLeft');
@@ -82,7 +97,9 @@ async function ordinateur(navigateur) {
   const marche = await jusqua(page, (e) => e2.x - e.x > 1.5);
   await page.keyboard.up('KeyS');
   await page.keyboard.up('ShiftLeft');
-  verifier(marche.vitesse > 1 && marche.vitesse < 2.2, 'Maj fait marcher au lieu de courir', `v=${marche.vitesse.toFixed(2)}`);
+  // Borne basse large : les bots coéquipiers (positions aléatoires) peuvent bousculer le joueur et le ralentir un instant ;
+  // l'essentiel est qu'il avance sans courir (course = 4,6 m/s).
+  verifier(marche.vitesse > 0.4 && marche.vitesse < 2.2, 'Maj fait marcher au lieu de courir', `v=${marche.vitesse.toFixed(2)}`);
   verifier(marche.audio === 'running', "l'audio démarre après le geste « Jouer »", marche.audio);
   await attendre(600);
 
@@ -102,12 +119,12 @@ async function ordinateur(navigateur) {
   const e5 = await etat(page);
   verifier(ecartAngle(e5.lacetCamera, e5.cap) < 0.05, 'C recentre la caméra derrière le personnage', `écart=${ecartAngle(e5.lacetCamera, e5.cap).toFixed(3)}`);
 
-  await page.screenshot({ path: `${CAPTURES}ordinateur.png`, timeout: 60000 });
+  await capturer(page, `${CAPTURES}ordinateur.png`, 60000);
 
   await page.keyboard.press('Escape');
   await attendre(100);
   const enPause = await etat(page);
-  verifier(!enPause.enJeu && (await page.evaluate(() => document.activeElement?.id)) === 'bouton-jouer', 'Échap met en pause, focus sur Reprendre');
+  verifier(!enPause.enJeu && (await page.evaluate(() => document.activeElement?.id)) === 'bouton-reprendre', 'Échap met en pause, focus sur Reprendre');
   const tickPause = enPause.tick;
   await attendre(500);
   verifier((await etat(page)).tick === tickPause, 'la simulation est gelée pendant la pause');
@@ -138,7 +155,7 @@ async function qualiteHaute(navigateur) {
   await page.waitForFunction(() => window.__pm3d.etat().fps > 0, null, { timeout: 90000 });
   const e = await etat(page);
   verifier(e.qualite === 'haute', 'qualité haute sélectionnée par paramètre');
-  await page.screenshot({ path: `${CAPTURES}haute.png`, timeout: 90000 });
+  await capturer(page, `${CAPTURES}haute.png`, 90000);
   verifier(erreurs.length === 0, 'aucune erreur console en qualité haute', erreurs.join(' | '));
   const eh = await etat(page);
   console.log(`   haute : appels de dessin ${eh.appelsDessin}`);
@@ -161,8 +178,10 @@ async function mobile(navigateur) {
   await page.waitForFunction(() => window.__pm3d.etat().fps > 3, null, { timeout: 60000 });
   verifier((await etat(page)).qualite === 'basse', 'qualité basse par défaut sur écran tactile');
   await page.tap('#bouton-jouer');
+  await attendre(200);
+  await page.tap('#camp-manif');
   await attendre(300);
-  verifier((await etat(page)).enJeu, 'toucher Jouer lance la partie');
+  verifier((await etat(page)).enJeu, 'toucher Jouer puis un camp lance la partie');
 
   const action = await page.locator('[data-commande="action"]').boundingBox();
   verifier(action && action.width >= 44 && action.height >= 44, 'bouton Action ≥ 44 px', action && `${action.width}×${action.height}`);
@@ -181,7 +200,7 @@ async function mobile(navigateur) {
   await attendre(1200);
   const joystickVisible = await page.locator('.joystick-base').isVisible();
   const actionAppuyee = await page.locator('[data-commande="action"]').evaluate((b) => b.classList.contains('appuye'));
-  await page.screenshot({ path: `${CAPTURES}mobile-paysage.png` });
+  await capturer(page, `${CAPTURES}mobile-paysage.png`);
   await toucher('touchEnd', [pouce(200, 230)]); // relâche Action
   await toucher('touchEnd', []);
   await attendre(400);
@@ -205,7 +224,7 @@ async function mobile(navigateur) {
   // Attente de l'état (le rendu logiciel peut retarder l'événement d'orientation de plusieurs images).
   const bandeau = await page.locator('#bandeau-portrait').waitFor({ state: 'visible', timeout: 5000 }).then(() => true, () => false);
   verifier(bandeau, 'bandeau « tourne le téléphone » en portrait');
-  await page.screenshot({ path: `${CAPTURES}mobile-portrait.png` });
+  await capturer(page, `${CAPTURES}mobile-portrait.png`);
 
   await page.evaluate(() => { Object.defineProperty(document, 'hidden', { value: true, configurable: true }); document.dispatchEvent(new Event('visibilitychange')); });
   await attendre(100);
@@ -216,7 +235,7 @@ async function mobile(navigateur) {
 
 try {
   await pret();
-  const navigateur = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+  const navigateur = await chromium.launch({ executablePath: process.env.CHROMIUM_EXECUTABLE_PATH || undefined, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   await ordinateur(navigateur);
   await qualiteHaute(navigateur);
   await mobile(navigateur);

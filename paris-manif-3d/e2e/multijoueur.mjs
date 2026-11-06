@@ -32,6 +32,15 @@ const verifier = (condition, message, detail = '') => {
   if (!condition) echecs++;
 };
 
+/** Capture d'écran documentaire : un dépassement de délai (rendu logiciel lent) n'est pas un échec. */
+async function capturer(page, fichier, timeout = 90000) {
+  try {
+    await page.screenshot({ path: fichier, timeout });
+  } catch (e) {
+    console.log(`   (capture ${fichier.split('/').pop()} abandonnée : ${String(e.message).split('\n')[0]})`);
+  }
+}
+
 async function pret() {
   for (let i = 0; i < 50; i++) {
     try { if ((await fetch(`${BASE}/sante`)).ok) return; } catch { /* pas encore */ }
@@ -76,7 +85,7 @@ async function principal() {
   await pret();
   // Un processus Chromium par joueur : contextes totalement indépendants (stockage, sessionStorage),
   // et chaque page reste au premier plan (en headless, une page d'arrière-plan ne rend plus d'images).
-  const navigateurs = await Promise.all([0, 1, 2].map(() => chromium.launch()));
+  const navigateurs = await Promise.all([0, 1, 2].map(() => chromium.launch({ executablePath: process.env.CHROMIUM_EXECUTABLE_PATH || undefined })));
   const ctxA = await navigateurs[0].newContext({ viewport: { width: 800, height: 500 } });
   const ctxB = await navigateurs[1].newContext({ viewport: { width: 800, height: 500 } });
   const ctxC = await navigateurs[2].newContext({ viewport: { width: 800, height: 500 } });
@@ -163,8 +172,8 @@ async function principal() {
   verifier(b0.x - b1.x > 2, 'B avance chez lui (vers −x)', `Δx=${(b1.x - b0.x).toFixed(2)}`);
   verifier(bVuParA0.x - bVuParA1.x > 2, 'A voit B avancer', `Δx vu par A=${(bVuParA1.x - bVuParA0.x).toFixed(2)}`);
   verifier(Math.abs(bVuParA1.x - b1.x) < 0.3, 'même position de B chez A et chez B');
-  await A.screenshot({ path: `${CAPTURES}multi-A.png` });
-  await B.screenshot({ path: `${CAPTURES}multi-B.png` });
+  await capturer(A, `${CAPTURES}multi-A.png`);
+  await capturer(B, `${CAPTURES}multi-B.png`);
   const hudA = await A.textContent('.tableau-score');
   verifier(/\d+\s*\d+:\d\d\s*\d+/.test(hudA.replace(/\s+/g, ' ')), 'scores et minuteur affichés', hudA.replace(/\s+/g, ' ').trim());
 
@@ -184,7 +193,7 @@ async function principal() {
   const eB4 = await jusqua(B, (e) => e.phase === 'partie' && e.id === idB && e.local !== null, 45000, 'B revient après rechargement');
   verifier(eB4.id === idB && eB4.phase === 'partie', 'après rechargement, B reprend sa place dans la partie');
   const avant = (await etat(A)).distants[idB];
-  await maintenir(B, 'KeyD', 1200);
+  await maintenir(B, 'KeyD', 3000); // long : à ~1 image/s la simulation ne rattrape qu'une partie du temps réel
   await attendre(800);
   const apres = (await etat(A)).distants[idB];
   verifier(Math.hypot(apres.x - avant.x, apres.z - avant.z) > 2, 'B pilote de nouveau son personnage (vu par A)');
@@ -198,7 +207,7 @@ async function principal() {
   const titreA = await A.textContent('#titre-resultat');
   const titreB = await B.textContent('#titre-resultat');
   verifier(finA.resultat.gagnant === 'egalite' ? titreA === titreB : titreA !== titreB, 'titres cohérents (victoire/défaite)', `${titreA} / ${titreB}`);
-  await A.screenshot({ path: `${CAPTURES}multi-resultats.png` });
+  await capturer(A, `${CAPTURES}multi-resultats.png`);
 
   console.log('— 7. Revanche ensemble —');
   await A.click('#bouton-revanche');
@@ -209,7 +218,7 @@ async function principal() {
   const r2B = await jusqua(B, (e) => e.phase === 'partie' && e.resultat === null, 20000, 'revanche B');
   verifier(r2A.phase === 'partie' && r2B.phase === 'partie', 'la revanche démarre chez les deux');
   verifier(JSON.stringify(r2A.scores) === '[0,0]' && JSON.stringify(r2A.objectifs) === '[0,0,0]', 'aucun état résiduel (scores, objectifs)');
-  verifier(Math.abs(r2A.local.x - -36) < 0.5, 'A repart de son point de départ', r2A.local.x.toFixed(2));
+  verifier(Math.abs(r2A.local.x - -41) < 0.5, 'A repart de son point de départ', r2A.local.x.toFixed(2));
 
   console.log('— 8. Départ d’un participant —');
   await B.keyboard.press('Escape');

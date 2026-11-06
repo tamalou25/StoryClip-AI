@@ -1,6 +1,6 @@
 # Multijoueur : salons privés, serveur autoritaire
 
-État au 05/11/2026 : **utilisable en local** (2 à 4 joueurs, salon privé à code court, partie, résultats, revanche, reconnexion), **testé localement et dans un conteneur Docker**, **pas encore déployé** sur un hébergeur public. Choix technique : [ADR 0002](adr/0002-reseau-ws.md).
+État au 06/11/2026 : **utilisable en local** (2 à 4 joueurs, salon privé à code court, partie avec les **règles complètes** — souffle, cordon, gaz fictif, mobilisation, bots —, résultats, revanche, reconnexion), **testé localement et dans un conteneur Docker**. Le client est publié sur GitHub Pages (solo jouable) ; le **serveur de jeu n'est pas encore hébergé** publiquement : voir « Déploiement ». Choix technique : [ADR 0002](adr/0002-reseau-ws.md).
 
 ## Lancer
 
@@ -124,15 +124,21 @@ Navigateur headless (rendu logiciel, 1,5 i/s réelles après fusion des ressourc
 
 ## Déploiement
 
+**GitHub Pages** (`.github/workflows/pages.yml`) publie le client construit avec `PM3D_BASE=/StoryClip-AI/` : le mode solo y est jouable ; `multi.html` demande l'adresse d'un serveur de jeu (champ « Serveur de jeu », ou `?serveur=wss://…`, ou la variable de dépôt `PM3D_SERVEUR_WS` au build). Pages ne peut pas héberger le serveur Node/WebSocket : il faut un hébergeur de conteneurs (image `Dockerfile`, port 8080, `PM3D_ORIGINES=https://tamalou25.github.io`) — non fait à ce jour.
+
 `Dockerfile` (un seul conteneur : client + `/ws`, utilisateur non root, contrôle de santé `/sante`). **Testé localement** : image construite (436 Mo avec les ressources graphiques), contrôle de santé « healthy », E2E complet contre le conteneur (avant fusion des ressources), puis vérifications ciblées après fusion. **Non testé** : hébergement public, TLS.
 
 En production : servir derrière un proxy TLS (`wss://` obligatoire depuis une page `https://`), définir `PM3D_ORIGINES`, et `PM3D_CONFIANCE_PROXY=1` si un seul proxy inverse est devant (sinon toutes les connexions partagent l'adresse du proxy et la limite par IP bloque vite). Un seul processus suffit pour l'ordre de grandeur visé (une partie = 4 joueurs × ~4 Ko/s) ; plusieurs processus demanderaient un routage des codes vers le bon processus (non fait). Les salons vivent en mémoire : un redémarrage les ferme.
 
+## Règles en ligne
+
+Le serveur et le client multijoueur utilisent `src/reseau/regles-manif.ts`, adaptateur `ReglesPartie` au-dessus des règles complètes de `src/sim/monde.ts` (06/11/2026). Les humains absents (reconnexion, parti) sont pilotés par l'IA des règles avec leur propre mémoire ; les humains en retard d'intention sont figés pour le pas. Le message `i` porte le bouton spécial (`p: true`, front montant) et chaque instantané un champ `x` (`ExtraEtat` : souffle, retour hors-jeu, charges/recharge du spécial, mobilisation, hors-jeu, nuages) qui alimente le HUD et les nuages de gaz. Les règles provisoires (`regles-zones.ts`) restent disponibles pour les tests de l'adaptateur. Effectifs : les humains + des bots de complément jusqu'à égalité (pas le 6 contre 5 du solo).
+
 ## Raccordements
 
-### Avec la session gameplay (`tamalou25/StoryClip-AI#1`, non fusionnée à ce jour)
+### Avec la session gameplay (fusionnée dans la branche d'intégration le 06/11/2026)
 
-La partie multijoueur utilise des **règles provisoires** (`src/reseau/regles-zones.ts` : 3 objectifs, 1 point par seconde de tenue, bots simples) derrière l'adaptateur `ReglesPartie` (`src/reseau/regles.ts`). Elles ne dépendent que de `avancer`/`creerPersonnage` (`src/sim/deplacement.ts`) et de `DT`/`FREQUENCE`, pas de la forme de `Monde` : la fusion de la refonte gameplay ne casse rien. Pour jouer en ligne avec les règles complètes (souffle, cordon, gaz, mobilisation, bots à navigation) :
+Historique : la partie multijoueur utilisait des **règles provisoires** (`src/reseau/regles-zones.ts` : 3 objectifs, 1 point par seconde de tenue, bots simples) derrière l'adaptateur `ReglesPartie` (`src/reseau/regles.ts`). Elles ne dépendent que de `avancer`/`creerPersonnage` (`src/sim/deplacement.ts`) et de `DT`/`FREQUENCE`, pas de la forme de `Monde` : la fusion de la refonte gameplay ne casse rien. Pour jouer en ligne avec les règles complètes (souffle, cordon, gaz, mobilisation, bots à navigation) :
 
 1. **Fait et validé, en attente de fusion** : `integration/gameplay/src/reseau/regles-manif.ts` implémente `ReglesPartie` au-dessus de `creerMonde`/`etape` de `src/sim/monde.ts` **sans modifier `src/sim/`** ; testé sur une fusion locale des trois branches (`integration/gameplay/server/tests/regles-manif.test.ts` 3/3 : placement des humains, IA pour un absent, figé, partie en ligne à deux avec résultat identique et revanche ; 0 correction de prédiction). Activation : `integration/gameplay/LISEZMOI.md`. Ce que fait l'adaptateur :
    - correspondance des camps `manifestants ↔ manif`, `forces ↔ ordre` ;
