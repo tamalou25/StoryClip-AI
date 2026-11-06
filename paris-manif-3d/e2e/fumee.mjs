@@ -97,7 +97,9 @@ async function ordinateur(navigateur) {
   const marche = await jusqua(page, (e) => e2.x - e.x > 1.5);
   await page.keyboard.up('KeyS');
   await page.keyboard.up('ShiftLeft');
-  verifier(marche.vitesse > 1 && marche.vitesse < 2.2, 'Maj fait marcher au lieu de courir', `v=${marche.vitesse.toFixed(2)}`);
+  // Borne basse large : les bots coéquipiers (positions aléatoires) peuvent bousculer le joueur et le ralentir un instant ;
+  // l'essentiel est qu'il avance sans courir (course = 4,6 m/s).
+  verifier(marche.vitesse > 0.4 && marche.vitesse < 2.2, 'Maj fait marcher au lieu de courir', `v=${marche.vitesse.toFixed(2)}`);
   verifier(marche.audio === 'running', "l'audio démarre après le geste « Jouer »", marche.audio);
   await attendre(600);
 
