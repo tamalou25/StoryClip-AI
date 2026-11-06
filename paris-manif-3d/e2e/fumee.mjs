@@ -26,6 +26,15 @@ const verifier = (condition, message, detail = '') => {
   if (!condition) echecs++;
 };
 
+/** Capture d'écran documentaire : un dépassement de délai (rendu logiciel lent) n'est pas un échec. */
+async function capturer(page, fichier, timeout = 90000) {
+  try {
+    await page.screenshot({ path: fichier, timeout });
+  } catch (e) {
+    console.log(`   (capture ${fichier.split('/').pop()} abandonnée : ${String(e.message).split('\n')[0]})`);
+  }
+}
+
 async function pret() {
   for (let i = 0; i < 50; i++) {
     try { if ((await fetch(`http://localhost:${PORT}/`)).ok) return; } catch { /* pas encore prêt */ }
@@ -108,7 +117,7 @@ async function ordinateur(navigateur) {
   const e5 = await etat(page);
   verifier(ecartAngle(e5.lacetCamera, e5.cap) < 0.05, 'C recentre la caméra derrière le personnage', `écart=${ecartAngle(e5.lacetCamera, e5.cap).toFixed(3)}`);
 
-  await page.screenshot({ path: `${CAPTURES}ordinateur.png`, timeout: 60000 });
+  await capturer(page, `${CAPTURES}ordinateur.png`, 60000);
 
   await page.keyboard.press('Escape');
   await attendre(100);
@@ -144,7 +153,7 @@ async function qualiteHaute(navigateur) {
   await page.waitForFunction(() => window.__pm3d.etat().fps > 0, null, { timeout: 90000 });
   const e = await etat(page);
   verifier(e.qualite === 'haute', 'qualité haute sélectionnée par paramètre');
-  await page.screenshot({ path: `${CAPTURES}haute.png`, timeout: 90000 });
+  await capturer(page, `${CAPTURES}haute.png`, 90000);
   verifier(erreurs.length === 0, 'aucune erreur console en qualité haute', erreurs.join(' | '));
   const eh = await etat(page);
   console.log(`   haute : appels de dessin ${eh.appelsDessin}`);
@@ -189,7 +198,7 @@ async function mobile(navigateur) {
   await attendre(1200);
   const joystickVisible = await page.locator('.joystick-base').isVisible();
   const actionAppuyee = await page.locator('[data-commande="action"]').evaluate((b) => b.classList.contains('appuye'));
-  await page.screenshot({ path: `${CAPTURES}mobile-paysage.png` });
+  await capturer(page, `${CAPTURES}mobile-paysage.png`);
   await toucher('touchEnd', [pouce(200, 230)]); // relâche Action
   await toucher('touchEnd', []);
   await attendre(400);
@@ -213,7 +222,7 @@ async function mobile(navigateur) {
   // Attente de l'état (le rendu logiciel peut retarder l'événement d'orientation de plusieurs images).
   const bandeau = await page.locator('#bandeau-portrait').waitFor({ state: 'visible', timeout: 5000 }).then(() => true, () => false);
   verifier(bandeau, 'bandeau « tourne le téléphone » en portrait');
-  await page.screenshot({ path: `${CAPTURES}mobile-portrait.png` });
+  await capturer(page, `${CAPTURES}mobile-portrait.png`);
 
   await page.evaluate(() => { Object.defineProperty(document, 'hidden', { value: true, configurable: true }); document.dispatchEvent(new Event('visibilitychange')); });
   await attendre(100);

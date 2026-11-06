@@ -32,6 +32,15 @@ const verifier = (condition, message, detail = '') => {
   if (!condition) echecs++;
 };
 
+/** Capture d'écran documentaire : un dépassement de délai (rendu logiciel lent) n'est pas un échec. */
+async function capturer(page, fichier, timeout = 90000) {
+  try {
+    await page.screenshot({ path: fichier, timeout });
+  } catch (e) {
+    console.log(`   (capture ${fichier.split('/').pop()} abandonnée : ${String(e.message).split('\n')[0]})`);
+  }
+}
+
 async function pret() {
   for (let i = 0; i < 50; i++) {
     try { if ((await fetch(`${BASE}/sante`)).ok) return; } catch { /* pas encore */ }
@@ -163,8 +172,8 @@ async function principal() {
   verifier(b0.x - b1.x > 2, 'B avance chez lui (vers −x)', `Δx=${(b1.x - b0.x).toFixed(2)}`);
   verifier(bVuParA0.x - bVuParA1.x > 2, 'A voit B avancer', `Δx vu par A=${(bVuParA1.x - bVuParA0.x).toFixed(2)}`);
   verifier(Math.abs(bVuParA1.x - b1.x) < 0.3, 'même position de B chez A et chez B');
-  await A.screenshot({ path: `${CAPTURES}multi-A.png` });
-  await B.screenshot({ path: `${CAPTURES}multi-B.png` });
+  await capturer(A, `${CAPTURES}multi-A.png`);
+  await capturer(B, `${CAPTURES}multi-B.png`);
   const hudA = await A.textContent('.tableau-score');
   verifier(/\d+\s*\d+:\d\d\s*\d+/.test(hudA.replace(/\s+/g, ' ')), 'scores et minuteur affichés', hudA.replace(/\s+/g, ' ').trim());
 
@@ -198,7 +207,7 @@ async function principal() {
   const titreA = await A.textContent('#titre-resultat');
   const titreB = await B.textContent('#titre-resultat');
   verifier(finA.resultat.gagnant === 'egalite' ? titreA === titreB : titreA !== titreB, 'titres cohérents (victoire/défaite)', `${titreA} / ${titreB}`);
-  await A.screenshot({ path: `${CAPTURES}multi-resultats.png` });
+  await capturer(A, `${CAPTURES}multi-resultats.png`);
 
   console.log('— 7. Revanche ensemble —');
   await A.click('#bouton-revanche');

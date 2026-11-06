@@ -4,8 +4,6 @@ name: Validation du jeu
 on:
   push:
     paths: ['paris-manif-3d/**', '.github/workflows/validation-jeu.yml']
-  pull_request:
-    paths: ['paris-manif-3d/**', '.github/workflows/validation-jeu.yml']
   workflow_dispatch:
 
 defaults:

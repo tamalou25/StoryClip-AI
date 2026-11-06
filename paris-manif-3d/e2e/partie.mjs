@@ -21,6 +21,15 @@ const verifier = (condition, message, detail = '') => {
   console.log(`${condition ? 'OK  ' : 'ÉCHEC'} ${message}${detail ? ` (${detail})` : ''}`);
   if (!condition) echecs++;
 };
+
+/** Capture d'écran documentaire : un dépassement de délai (rendu logiciel lent) n'est pas un échec. */
+async function capturer(page, fichier, timeout = 90000) {
+  try {
+    await page.screenshot({ path: fichier, timeout });
+  } catch (e) {
+    console.log(`   (capture ${fichier.split('/').pop()} abandonnée : ${String(e.message).split('\n')[0]})`);
+  }
+}
 async function pret() {
   for (let i = 0; i < 50; i++) {
     try { if ((await fetch(`http://localhost:${PORT}/`)).ok) return; } catch { /* pas encore prêt */ }
@@ -89,7 +98,7 @@ async function manifestantsClavier(navigateur) {
   await attendre(600); // le HUD se met à jour à l'image suivante
   const valeur = await page.getAttribute('#jauge', 'aria-valuenow');
   verifier(Number(valeur) >= 1, 'la jauge expose aria-valuenow', valeur);
-  await page.screenshot({ path: `${CAPTURES}partie-manif.png`, timeout: 60000 });
+  await capturer(page, `${CAPTURES}partie-manif.png`, 60000);
 
   // Spécial : slogan (appui bref) → recharge en cours.
   await page.keyboard.press('KeyF');
@@ -144,7 +153,7 @@ async function manifestantsClavier(navigateur) {
   const titre = await texte(page, '#resultat-titre');
   verifier(titre === (e.vainqueur === 'manif' ? 'Victoire' : 'Défaite'), 'le titre correspond au vainqueur', titre);
   verifier((await texte(page, '#resultat-conseil')).length > 20 && (await page.locator('#resultat-journal li').count()) >= 1, 'un conseil et des moments clés expliquent le résultat');
-  await page.screenshot({ path: `${CAPTURES}resultat.png`, timeout: 60000 });
+  await capturer(page, `${CAPTURES}resultat.png`, 60000);
   await page.keyboard.press('Enter'); // Revanche
   await attendre(300);
   e = await etat(page);
@@ -187,7 +196,7 @@ async function ordreClavier(navigateur) {
   verifier(e.rallie, 'Espace maintenu = cordon');
   await page.keyboard.up('Space');
   await page.keyboard.up('KeyW');
-  await page.screenshot({ path: `${CAPTURES}partie-ordre.png`, timeout: 60000 });
+  await capturer(page, `${CAPTURES}partie-ordre.png`, 60000);
   await page.evaluate(() => window.__pm3d.accelerer(60));
   e = await jusqua(page, (s) => s.ecran === 'resultat', 6000);
   verifier(e.phase === 'terminee' && e.ecran === 'resultat', 'la partie se termine côté forces de l’ordre', e.raison);
@@ -232,7 +241,7 @@ async function mobile(navigateur) {
   await toucher('touchEnd', [pouce(200, 230)]);
   e = await jusqua(page, (s) => s.nuages >= 1, 3000);
   verifier(e.nuages >= 1, 'bouton Spécial pendant la course : gaz lancé (multitouch)', `nuages=${e.nuages}`);
-  await page.screenshot({ path: `${CAPTURES}mobile-partie.png` });
+  await capturer(page, `${CAPTURES}mobile-partie.png`);
   await toucher('touchEnd', []);
   await attendre(300);
   e = await etat(page);
@@ -250,7 +259,7 @@ async function mobile(navigateur) {
   await page.evaluate(() => window.__pm3d.accelerer(60));
   e = await jusqua(page, (s) => s.ecran === 'resultat', 6000);
   verifier(e.ecran === 'resultat', 'écran de résultat en tactile');
-  await page.screenshot({ path: `${CAPTURES}mobile-resultat.png` });
+  await capturer(page, `${CAPTURES}mobile-resultat.png`);
   await page.tap('#bouton-revanche');
   await attendre(300);
   verifier((await etat(page)).enJeu && (await etat(page)).temps < 1, 'revanche au toucher');
