@@ -38,6 +38,8 @@ const app = creerApplication(canvas, qualite);
 boutonJouer.disabled = true;
 boutonJouer.textContent = 'Chargement… 0 %';
 let res: Ressources;
+const debutChargement = performance.now();
+let dureeChargement = 0;
 try {
   res = await chargerRessources(app, qualite, (p) => { boutonJouer.textContent = `Chargement… ${Math.round(p * 100)} %`; });
 } catch (e) {
@@ -45,6 +47,7 @@ try {
   el('menu-titre').insertAdjacentHTML('afterend', '<p class="sous-titre">Les ressources du jeu n\'ont pas pu être chargées. Rechargez la page.</p>');
   throw e;
 }
+dureeChargement = performance.now() - debutChargement;
 boutonJouer.disabled = false;
 boutonJouer.textContent = 'Jouer';
 boutonJouer.focus();
@@ -228,10 +231,30 @@ majOrientation();
 
 app.start();
 
+/** Triangles de toute la scène (couche World, sans élimination hors champ) : mesure de budget. */
+function trianglesScene(): number {
+  let t = 0;
+  const monde = app.scene.layers.getLayerByName('World');
+  for (const mi of monde?.meshInstances ?? []) t += (mi.mesh?.primitive[0]?.count ?? 0) / 3;
+  return Math.round(t);
+}
+
 // Crochet de test (uniquement avec ?test=1) : lecture seule de l'état.
 if (parametres.get('test') === '1') {
   (window as unknown as Record<string, unknown>).__pm3d = {
     app, // inspection de la scène dans les tests uniquement
+    /** Mesures de rendu (moteur en version de production : certaines valeurs peuvent rester à 0). */
+    mesures: () => {
+      const st = app.stats as unknown as { drawCalls: Record<string, number>; frame: Record<string, number>; vram: { tex: number; vb: number; ib: number; texShadow: number } };
+      return {
+        chargementMs: Math.round(dureeChargement),
+        appels: st.drawCalls.total, appelsOmbres: st.drawCalls.shadow, appelsSkinnes: st.drawCalls.skinned,
+        primitives: st.frame.primitives, majMs: st.frame.updateTime, rendusMs: st.frame.renderTime,
+        vramTexturesMo: +(st.vram.tex / 1048576).toFixed(1), vramGeometrieMo: +((st.vram.vb + st.vram.ib) / 1048576).toFixed(1),
+        vramOmbresMo: +(st.vram.texShadow / 1048576).toFixed(1),
+        trianglesScene: trianglesScene(),
+      };
+    },
     vue: (position: [number, number, number] | null, cible?: [number, number, number]) => {
       vueImposee = position && cible ? { position: { x: position[0], y: position[1], z: position[2] }, cible: { x: cible[0], y: cible[1], z: cible[2] } } : null;
     },

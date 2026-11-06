@@ -43,8 +43,10 @@ async function jusqua(page, condition, delai = 15000) {
 const ecartAngle = (a, b) => Math.abs(((b - a + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
 
 async function ordinateur(navigateur) {
-  console.log('— Ordinateur 1280×800, clavier seul (qualité basse) —');
-  const page = await navigateur.newPage({ viewport: { width: 1280, height: 800 } });
+  // 960 × 540 : le rendu logiciel (SwiftShader) coûte proportionnellement aux pixels ; au-delà de 250 ms
+  // par image, la simulation perd du temps et les vérifications de déplacement deviennent aléatoires.
+  console.log('— Ordinateur 960×540, clavier seul (qualité basse) —');
+  const page = await navigateur.newPage({ viewport: { width: 960, height: 540 } });
   const erreurs = [];
   page.on('pageerror', (e) => erreurs.push(e.message));
   page.on('console', (m) => { if (m.type() === 'error') erreurs.push(m.text()); });
@@ -70,7 +72,7 @@ async function ordinateur(navigateur) {
   verifier(e1.x - e0.x > 3 && e1.vitesse > 3, 'Z/W fait courir vers le monument (+x)', `Δx=${(e1.x - e0.x).toFixed(2)} v=${e1.vitesse.toFixed(2)}`);
 
   // On continue tout droit dans le socle du monument : il doit arrêter le personnage.
-  const e2 = await jusqua(page, (e) => e.x > -10 && e.vitesse < 0.05, 60000);
+  const e2 = await jusqua(page, (e) => e.x > -10 && e.vitesse < 0.05, 120000);
   await page.keyboard.up('KeyW');
   verifier(e2.x > -5.05 && e2.x <= -4.5 - 0.4 + 1e-3 && Math.abs(e2.z) < 0.5, 'bloqué contre le socle central, sans le traverser', `x=${e2.x.toFixed(2)} z=${e2.z.toFixed(2)}`);
 
@@ -92,7 +94,7 @@ async function ordinateur(navigateur) {
 
   await page.keyboard.down('KeyE');
   let e4 = await etat(page);
-  for (let i = 0; i < 15 && Math.abs(e4.lacetCamera - e3.lacetCamera) <= 0.5; i++) { await attendre(200); e4 = await etat(page); }
+  for (let i = 0; i < 50 && Math.abs(e4.lacetCamera - e3.lacetCamera) <= 0.5; i++) { await attendre(200); e4 = await etat(page); }
   await page.keyboard.up('KeyE');
   verifier(Math.abs(e4.lacetCamera - e3.lacetCamera) > 0.5, 'E tourne la caméra', `Δ=${(e4.lacetCamera - e3.lacetCamera).toFixed(2)}`);
   await page.keyboard.press('KeyC');
@@ -200,8 +202,9 @@ async function mobile(navigateur) {
 
   // Portrait : bandeau d'invitation à tourner l'écran.
   await page.setViewportSize({ width: appareil.viewport.width, height: appareil.viewport.height });
-  await attendre(300);
-  verifier(await page.locator('#bandeau-portrait').isVisible(), 'bandeau « tourne le téléphone » en portrait');
+  // Attente de l'état (le rendu logiciel peut retarder l'événement d'orientation de plusieurs images).
+  const bandeau = await page.locator('#bandeau-portrait').waitFor({ state: 'visible', timeout: 5000 }).then(() => true, () => false);
+  verifier(bandeau, 'bandeau « tourne le téléphone » en portrait');
   await page.screenshot({ path: `${CAPTURES}mobile-portrait.png` });
 
   await page.evaluate(() => { Object.defineProperty(document, 'hidden', { value: true, configurable: true }); document.dispatchEvent(new Event('visibilitychange')); });

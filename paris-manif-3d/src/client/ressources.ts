@@ -25,6 +25,12 @@ export interface Ressources {
   lampadaire: pc.ContainerResource;
   banc: pc.ContainerResource;
   statue: pc.ContainerResource;
+  /** Kit de façade haussmannienne (Blender) : pièces nommées, matériaux remplacés par nom. */
+  facade: pc.ContainerResource;
+  /** Piédestal du monument (Blender) : matériaux granit, pierre_claire, bronze remplacés par nom. */
+  monument: pc.ContainerResource;
+  /** Trois variantes de platane (Blender) : matériaux ecorce et feuillage remplacés par nom. */
+  platanes: pc.ContainerResource[];
   manifestant: pc.ContainerResource;
   passant: pc.ContainerResource;
 }
@@ -68,7 +74,7 @@ export async function chargerRessources(app: pc.Application, qualite: Qualite, p
   };
   const modele = (chemin: string) => suivre(charger<pc.ContainerResource>(app, BASE + chemin, 'container'));
 
-  const [dalles, paves, asphalte, ecorce, pierre, rameau, ciel, lampadaire, banc, statue, manifestant, passant] = await Promise.all([
+  const [dalles, paves, asphalte, ecorce, pierre, rameau, ciel, lampadaire, banc, statue, facade, monument, platanes, manifestant, passant] = await Promise.all([
     pbr('concrete_tiles_02'),
     pbr('cobblestone_floor_09'),
     pbr('asphalt_02'),
@@ -79,8 +85,11 @@ export async function chargerRessources(app: pc.Application, qualite: Qualite, p
     modele(f.lampadaire),
     modele(f.banc),
     modele(f.statue),
+    modele(f.facade),
+    modele(f.monument),
+    Promise.all(f.platanes.map(modele)),
     modele(f.manifestant),
     modele(f.passant),
   ]);
-  return { dalles, paves, asphalte, ecorce, pierre, rameau, ciel, lampadaire, banc, statue, manifestant, passant };
+  return { dalles, paves, asphalte, ecorce, pierre, rameau, ciel, lampadaire, banc, statue, facade, monument, platanes, manifestant, passant };
 }

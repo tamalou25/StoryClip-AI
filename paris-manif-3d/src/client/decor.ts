@@ -5,7 +5,7 @@
 
 import * as pc from 'playcanvas';
 import { ARBRES_X, hauteurCorniche, RANGEES_ARBRES_Z, type Carte, type Immeuble, type Obstacle } from '../sim/carte';
-import { boite, cartesFeuillage, entite, mansarde, panneau, sol, type Houppier } from './geometrie';
+import { boite, entite, mansarde, panneau, sol } from './geometrie';
 import type { Ressources, TexturePBR } from './ressources';
 import * as T from './textures';
 
@@ -20,7 +20,7 @@ interface Contexte {
   racine: pc.Entity;
   m: Materiaux;
   res: Ressources;
-  houppiers: Houppier[];
+  kit?: Map<string, pc.Entity>;
 }
 
 function couleur(hex: string): pc.Color {
@@ -96,19 +96,50 @@ function creerMateriaux(device: pc.GraphicsDevice, haute: boolean, anis: number,
   const paves = pbr(res.paves, 2.175, { normale: 1.2 });
   const asphalte = pbr(res.asphalte, 3, { teinte: '#a9a9a9' });
   const ecorce = pbr(res.ecorce, 1.5, { normale: 1.3 });
-  const pierre = pbr(res.pierre, 3, { teinte: '#e6dcc6', normale: 0.6 });
-  const pierreClaire = pbr(res.pierre, 2, { teinte: '#f1e9d8', normale: 0.6 });
+  // Pierre de taille : grain photographique (Poly Haven) + joints d'assise générés (carte de détail).
+  const pierre = pbr(res.pierre, 3, { teinte: '#efe8dc', normale: 0.6 });
+  const joints = T.jointsPierre(haute ? 512 : 256);
+  pierre.diffuseDetailMap = T.texture(device, joints.couleur, true, anis);
+  // Le pavage de détail s'applique aux UV d'origine (en mètres) : toile de 2 m → 1/2.
+  pierre.diffuseDetailMapTiling = new pc.Vec2(1 / 2, 1 / 2);
+  pierre.normalDetailMap = T.texture(device, T.normales(joints.hauteur, joints.largeur, joints.hauteurPx, 2.5), false, anis);
+  pierre.normalDetailMapTiling = pierre.diffuseDetailMapTiling;
+  pierre.update();
+  const pierreClaire = pbr(res.pierre, 2, { teinte: '#f4efe6', normale: 0.6 });
 
-  // Façades haussmanniennes : aucune texture libre adaptée trouvée ; la travée procédurale (fenêtres,
-  // moulures) reçoit le grain photographique de la pierre en carte de détail.
-  const traveeCouches = T.travee(Math.round(256 * (haute ? 1.5 : 1)));
-  const travees = [couleur('#ffffff'), couleur('#f3ece0'), couleur('#e9e6e0')].map((teinte) => {
-    const m = M(traveeCouches, { metres: [3, 3.1], gloss: 0.3, normaleForce: 6, teinte });
-    m.normalDetailMap = res.pierre.normale;
-    m.normalDetailMapTiling = new pc.Vec2(3 / 1.5, 3.1 / 1.5); // relatif à la travée de 3 × 3,1 m
-    m.normalDetailMapBumpiness = 0.8;
-    m.update();
-    return m;
+  // Devantures fictives : atlas de 8 boutiques, une matière par cellule (même texture partagée).
+  const atlas = T.devantures(haute ? 1 : 0.5);
+  const atlasCouleur = T.texture(device, atlas.couleur, true, anis, false);
+  const atlasBrillance = T.texture(device, atlas.brillance, false, anis, false);
+  const devantures = Array.from({ length: 8 }, (_, i) => {
+    const d = new pc.StandardMaterial();
+    d.name = `devanture_${i}`;
+    d.useMetalness = true;
+    d.metalness = 0;
+    d.diffuseMap = atlasCouleur;
+    d.glossMap = atlasBrillance;
+    d.glossMapChannel = 'g';
+    d.gloss = 0.9;
+    for (const carte of ['diffuseMap', 'glossMap'] as const) {
+      d[`${carte}Tiling`] = new pc.Vec2(0.25, 0.5);
+      d[`${carte}Offset`] = new pc.Vec2((i % 4) * 0.25, Math.floor(i / 4) * 0.5);
+    }
+    d.update();
+    return d;
+  });
+  const portes = ['#21362c', '#4a1c22', '#1d2a3a', '#1c1c1c'].map((hex) => simple(hex, 0.5));
+  // Toiles des stores bannes (4 variantes dans une même texture).
+  const toiles = T.texture(device, T.toilesStores(), true, anis, false);
+  const stores = [0, 1, 2, 3].map((i) => {
+    const t = new pc.StandardMaterial();
+    t.useMetalness = true;
+    t.metalness = 0; // défaut PlayCanvas = 1 (métal) : à préciser pour toute matière non métallique
+    t.diffuseMap = toiles;
+    t.diffuseMapTiling = new pc.Vec2(1, 0.25);
+    t.diffuseMapOffset = new pc.Vec2(0, i * 0.25);
+    t.gloss = 0.18;
+    t.update();
+    return t;
   });
   const zinc = M(T.zinc(128), { metres: [2, 2], gloss: 0.5, metalness: 0.55, normaleForce: 3 });
   const bronze = M(T.bronze(128), { metres: [1.5, 1.5], gloss: 0.55, metalness: 0.75, normaleForce: 2 });
@@ -116,30 +147,42 @@ function creerMateriaux(device: pc.GraphicsDevice, haute: boolean, anis: number,
   // Feuillage de platane : cartes à transparence (LeafSet010 d'ambientCG, rameau composé).
   const feuilles = new pc.StandardMaterial();
   feuilles.useMetalness = true;
+  feuilles.metalness = 0; // défaut PlayCanvas = 1 : les feuilles étaient rendues comme du métal
   feuilles.diffuseMap = res.rameau;
   feuilles.opacityMap = res.rameau;
   feuilles.opacityMapChannel = 'a';
   feuilles.alphaTest = 0.45;
   feuilles.alphaToCoverage = haute; // bords doux avec l'anticrénelage MSAA
   feuilles.cull = pc.CULLFACE_NONE;
-  feuilles.twoSidedLighting = true;
-  feuilles.gloss = 0.35;
-  feuilles.diffuse = couleur('#a7b394'); // vert de platane en été, moins acide que la photo
+  // Les normales des cartes suivent l'ellipsoïde du houppier (Blender) : pas d'éclairage bifacial,
+  // sinon les faces arrière, nombreuses au bord du houppier, reçoivent une normale inversée et noircissent.
+  feuilles.twoSidedLighting = false;
+  feuilles.gloss = 0.18; // feuilles mates : un reflet d'environnement trop fort les blanchit
+  feuilles.diffuse = couleur('#98a28a'); // vert de platane en été, moins acide que la photo
+  // Translucidité simulée : un peu de lumière « traverse » les feuilles (émission modulée par la texture),
+  // sinon l'intérieur du houppier, à l'ombre de lui-même, vire au noir.
+  feuilles.emissive = new pc.Color(0.16, 0.19, 0.11);
+  feuilles.emissiveMap = res.rameau;
+  feuilles.emissiveIntensity = haute ? 0.55 : 0.4;
   feuilles.update();
 
   const fer = gardeCorpsMateriau(device, anis);
   const m = {
     dalles, paves, asphalte, zinc, ecorce, feuilles, bronze, fer,
-    travee0: travees[0]!, travee1: travees[1]!, travee2: travees[2]!,
     pierre,
     pierreClaire,
-    corniche: simple('#d3c5a7', 0.2),
+    devantures,
+    portes,
+    stores,
+    corniche: pierreClaire,
+    granit: pbr(res.pierre, 2, { teinte: '#9c9c99', normale: 0.8 }),
+    menuiserie: simple('#e8e4da', 0.45),
+    vitre: simple('#1b2329', 0.94, 0.35),
     fonte: simple('#222a26', 0.55, 0.6),
     galva: simple('#9ea3a6', 0.55, 0.85),
     grille: simple('#2a2c2c', 0.4, 0.7),
     marquage: simple('#e8e6df', 0.25),
     cheminee: simple('#b0715a', 0.15),
-    vitre: simple('#56697a', 0.92, 0.1),
   };
   return m;
 }
@@ -157,8 +200,9 @@ function gardeCorpsMateriau(device: pc.GraphicsDevice, anis: number): pc.Standar
   m.gloss = 0.45;
   m.cull = pc.CULLFACE_NONE;
   m.twoSidedLighting = true;
-  m.diffuseMapTiling = new pc.Vec2(1 / 1.5, 1);
-  m.opacityMapTiling = new pc.Vec2(1 / 1.5, 1);
+  // UV du kit Blender exprimés en motifs (1 motif de garde-corps = 1,5 m).
+  m.diffuseMapTiling = new pc.Vec2(1, 1);
+  m.opacityMapTiling = new pc.Vec2(1, 1);
   m.update();
   return m;
 }
@@ -170,13 +214,13 @@ export interface Ambiance {
 }
 
 /**
- * Le soleil du HDRI (kloofendal_48d_partly_cloudy_puresky) est à 48° d'élévation et à l'azimut
- * équirectangulaire u = 0,5952, soit atan2(x, z) = 0,598 rad dans la convention de PlayCanvas.
+ * Le soleil du HDRI (kloofendal_38d_partly_cloudy_puresky, fin d'après-midi) est à 37,8° d'élévation et
+ * à l'azimut équirectangulaire u = 0,6001, soit atan2(x, z) = 0,629 rad dans la convention de PlayCanvas.
  * On fait tourner le ciel pour placer le soleil derrière la caméra de départ (sud-ouest de la place),
  * puis on aligne la lumière directionnelle sur ce soleil : ombres et reflets cohérents avec le ciel.
  */
-const SOLEIL_HDRI_AZIMUT = 0.598;
-const SOLEIL_HDRI_ELEVATION = (48 * Math.PI) / 180;
+const SOLEIL_HDRI_AZIMUT = 0.629;
+const SOLEIL_HDRI_ELEVATION = (37.8 * Math.PI) / 180;
 const SOLEIL_AZIMUT_VOULU = -2.17; // vers −x et −z : façades est et sud éclairées
 export function directionSoleil(): pc.Vec3 {
   const az = SOLEIL_AZIMUT_VOULU;
@@ -186,10 +230,12 @@ export function directionSoleil(): pc.Vec3 {
 function lumiere(ctx: Contexte): Ambiance {
   const { app, haute, res } = ctx;
   // Ciel et éclairage d'ambiance (IBL) depuis le HDRI.
-  const ciel = pc.EnvLighting.generateSkyboxCubemap(res.ciel, haute ? 1024 : 512);
+  // Faces du cube dimensionnées sur la source (HDRI 2k ≈ 512 px par quart de tour) : au-delà, mémoire perdue.
+  const ciel = pc.EnvLighting.generateSkyboxCubemap(res.ciel, haute ? 512 : 256);
   const source = pc.EnvLighting.generateLightingSource(res.ciel, { size: haute ? 256 : 128 });
   app.scene.envAtlas = pc.EnvLighting.generateAtlas(source, { size: haute ? 512 : 256 });
   source.destroy();
+  res.ciel.destroy(); // l'équirectangulaire source n'est plus utile (2 Mo en basse, 8 Mo en haute)
   app.scene.skybox = ciel;
   app.scene.skyboxMip = 0;
   app.scene.skyboxIntensity = 1;
@@ -207,7 +253,7 @@ function lumiere(ctx: Contexte): Ambiance {
   const soleil = new pc.Entity('soleil');
   soleil.addComponent('light', {
     type: 'directional',
-    color: new pc.Color(1, 0.95, 0.86),
+    color: new pc.Color(1, 0.93, 0.82), // soleil de fin d'après-midi (teinte mesurée dans le HDRI, accentuée)
     intensity: 2.4,
     castShadows: true,
     shadowType: haute ? pc.SHADOW_PCF3_32F : pc.SHADOW_PCF1_32F,
@@ -245,6 +291,17 @@ function sols(ctx: Contexte, carte: Carte): void {
     [0, l.minZ - marge, lx + bord * 2, bord], [0, l.maxZ + marge, lx + bord * 2, bord],
     [l.minX - marge, 0, bord, lz], [l.maxX + marge, 0, bord, lz],
   ] as const) poser(ctx, racine, 'bordure', boite(device, a, y + 0.02, b), m.paves, [x, 0, z], false);
+  // Composition du dallage : bandes de pavés de granit qui découpent de grands panneaux (repères pour
+  // le joueur, moins de monotonie), et cadre pavé autour du monument.
+  const bandes: [number, number, number, number][] = [];
+  for (const x of [-33, -22, -11, 11, 22, 33]) bandes.push([x - 0.3, l.minZ - marge, x + 0.3, -RANGEES_ARBRES_Z - 1.6]);
+  for (const x of [-33, -22, -11, 11, 22, 33]) bandes.push([x - 0.3, RANGEES_ARBRES_Z + 1.6, x + 0.3, l.maxZ + marge]);
+  for (const x of [-33, -22, -11, 11, 22, 33]) bandes.push([x - 0.3, -RANGEES_ARBRES_Z + 1.6, x + 0.3, RANGEES_ARBRES_Z - 1.6]);
+  for (const [cote, larg] of [[7.2, 0.8]] as const) {
+    bandes.push([-cote, -cote, cote, -cote + larg], [-cote, cote - larg, cote, cote], [-cote, -cote + larg, -cote + larg, cote - larg], [cote - larg, -cote + larg, cote, cote - larg]);
+  }
+  for (const [x0, z0, x1, z1] of bandes) racine.addChild(entite('bande-paves', sol(device, x0, z0, x1, z1, y + 0.004), m.paves, false, ctx.groupe));
+
   // Bandes de stabilisé sous les arbres (pavés), et grilles d'arbres.
   for (const z of [-RANGEES_ARBRES_Z, RANGEES_ARBRES_Z]) {
     racine.addChild(entite('bande', sol(device, -37, z - 1.6, 37, z + 1.6, y + 0.005), m.paves, false, ctx.groupe));
@@ -271,63 +328,83 @@ function sols(ctx: Contexte, carte: Carte): void {
 
 // ——————————————————————————————————————————————— Immeubles
 
+/** Pièces du kit de façade (gabarits non affichés), indexées par nom de nœud. */
+function gabaritsFacade(ctx: Contexte): Map<string, pc.Entity> {
+  const kit = ctx.res.facade.instantiateRenderEntity();
+  const pieces = new Map<string, pc.Entity>();
+  for (const nom of ['rdc_boutique', 'rdc_porte', 'etage_simple', 'etage_balcon', 'etage_balconnet', 'corniche', 'lucarne', 'store']) {
+    const e = kit.findByName(nom) as pc.Entity | null;
+    if (!e) throw new Error(`Pièce absente du kit de façade : ${nom}`);
+    pieces.set(nom, e);
+  }
+  return pieces;
+}
+
+/** Pose une copie de pièce du kit et remplace ses matériaux par ceux du jeu (par nom). */
+function poserPiece(ctx: Contexte, parent: pc.Entity, nom: string, x: number, y: number, z: number, remplacements: Record<string, pc.Material>): void {
+  const e = ctx.kit!.get(nom)!.clone() as pc.Entity;
+  e.setLocalPosition(x, y, z);
+  for (const r of e.findComponents('render') as pc.RenderComponent[]) {
+    r.castShadows = true;
+    r.receiveShadows = true;
+    r.batchGroupId = ctx.groupe;
+    for (const mi of r.meshInstances) {
+      const m = mi.material ? remplacements[mi.material.name] : undefined;
+      if (m) mi.material = m;
+    }
+  }
+  parent.addChild(e);
+}
+
+const NIVEAU_TROTTOIR = 0.14;
+const ETAGES_TYPES = ['etage_simple', 'etage_balcon', 'etage_balconnet', 'etage_balconnet', 'etage_balcon'];
+
 function immeuble(ctx: Contexte, im: Immeuble): void {
   const { device, m, haute } = ctx;
   const racine = new pc.Entity(im.id);
   const angle = { sud: 0, nord: 180, est: 90, ouest: -90 }[im.orientation];
-  racine.setPosition(im.x, 0, im.z);
+  racine.setPosition(im.x, NIVEAU_TROTTOIR, im.z); // la façade part du niveau du trottoir
   racine.setEulerAngles(0, angle, 0);
   ctx.racine.addChild(racine);
 
   const L = im.longueur;
   const P = im.profondeur;
   const hC = hauteurCorniche(im);
-  const travee = [m.travee0, m.travee1, m.travee2][im.graine % 3]!;
+  const hToit = hC + 0.8; // dessus du chéneau de la corniche
+  const RETRAIT = 0.42; // le corps recule derrière la façade : les baies gardent leur profondeur
 
-  // Corps de bâtiment (pierre) derrière la façade.
-  poser(ctx, racine, 'corps', boite(device, L, hC, P), m.pierre, [0, 0, -P / 2]);
-  // Rez-de-chaussée commercial et étages courants.
-  const rdc = T.materiauCouches(device, T.rezDeChaussee(L, im.graine * 17, haute ? 48 : 28), { metres: [L, 4.6], gloss: 0.3, normaleForce: 3 }, ctx.anis);
-  poser(ctx, racine, 'rdc', panneau(device, L, 4.6), rdc, [-L / 2, 0, 0.03]);
-  poser(ctx, racine, 'etages', panneau(device, L, im.etages * 3.1), travee, [-L / 2, 4.6, 0.03]);
+  // Corps de bâtiment (pierre) et retours de mur aux extrémités de la façade.
+  poser(ctx, racine, 'corps', boite(device, L, hToit + NIVEAU_TROTTOIR, P - RETRAIT), m.pierre, [0, -NIVEAU_TROTTOIR, -RETRAIT - (P - RETRAIT) / 2]);
+  for (const s of [-1, 1]) poser(ctx, racine, 'retour', boite(device, 0.3, hC, RETRAIT), m.pierre, [s * (L / 2 - 0.15), 0, -RETRAIT / 2]);
 
-  // Entablement du rez-de-chaussée et corniche principale (débords).
-  poser(ctx, racine, 'entablement', boite(device, L, 0.35, 0.35), m.corniche, [0, 4.45, 0.15]);
-  poser(ctx, racine, 'corniche', boite(device, L + 0.3, 0.45, 0.75), m.corniche, [0, hC - 0.3, 0.2]);
-  // Balcons filants : étage noble (2e) et 5e, dalle + garde-corps en fer forgé.
-  for (const etage of [1, 4]) {
-    const yB = 4.6 + etage * 3.1 - 0.12;
-    poser(ctx, racine, 'balcon', boite(device, L - 0.2, 0.16, 0.8), m.corniche, [0, yB, 0.4]);
-    poser(ctx, racine, 'gardecorps', panneau(device, L - 0.2, 1.0), m.fer, [-(L - 0.2) / 2, yB + 0.16, 0.79], haute);
+  // Façade : travées de 3 m du kit Blender (rez-de-chaussée, 5 étages, corniche, lucarnes).
+  const remplacements: Record<string, pc.Material> = {
+    pierre: m.pierre, corniche: m.corniche, menuiserie: m.menuiserie, vitre: m.vitre,
+    ferronnerie: m.fer, fonte: m.fonte, zinc: m.zinc, porte: m.portes[im.graine % m.portes.length]!,
+  };
+  const travees = Math.round(L / 3);
+  const porte = (im.graine * 5) % travees;
+  for (let k = 0; k < travees; k++) {
+    const x = -L / 2 + 1.5 + k * 3;
+    // Une boutique par travée (enseignes variées) ; une travée porte cochère par immeuble.
+    const boutique = m.devantures[(im.graine * 3 + k) % m.devantures.length]!;
+    poserPiece(ctx, racine, k === porte ? 'rdc_porte' : 'rdc_boutique', x, 0, 0, { ...remplacements, devanture: boutique });
+    // Stores bannes sur environ une boutique sur deux (cafés, brasseries, fleuristes…).
+    if (k !== porte && (im.graine + k) % 2 === 0) poserPiece(ctx, racine, 'store', x, 0, 0, { ...remplacements, toile: m.stores[(im.graine + k) % m.stores.length]! });
+    for (let e = 0; e < im.etages; e++) poserPiece(ctx, racine, ETAGES_TYPES[e % ETAGES_TYPES.length]!, x, 4.6 + e * 3.1, 0, remplacements);
+    poserPiece(ctx, racine, 'corniche', x, hC + 0.5, 0, remplacements);
+    if (k % (haute ? 2 : 3) === 0) poserPiece(ctx, racine, 'lucarne', x, hToit + 0.9, -0.28, remplacements);
   }
-  // Balconnets devant chaque porte-fenêtre des autres étages (haute qualité seulement).
-  if (haute) {
-    const garde = panneau(device, 1.35, 0.85);
-    for (const etage of [2, 3]) {
-      for (let k = 0; k < L / 3; k++) {
-        const x = -L / 2 + k * 3 + 1.5;
-        poser(ctx, racine, 'balconnet', garde, m.fer, [x - 0.675, 4.6 + etage * 3.1 + 0.02, 0.22], false);
-        poser(ctx, racine, 'appui', boite(device, 1.45, 0.08, 0.25), m.corniche, [x, 4.6 + etage * 3.1, 0.13], false);
-      }
-    }
-  }
-  // Toit à la Mansart en zinc, lucarnes et souches de cheminée.
-  poser(ctx, racine, 'toit', mansarde(device, L, P), m.zinc, [0, hC, -P / 2]);
-  if (haute) {
-    for (let k = 0; k < L / 3; k++) {
-      const x = -L / 2 + k * 3 + 1.5;
-      poser(ctx, racine, 'lucarne', boite(device, 1.1, 1.5, 0.9), m.corniche, [x, hC + 0.7, -0.75], false);
-      poser(ctx, racine, 'lucarneVitre', panneau(device, 0.7, 1.0), m.vitre, [x - 0.35, hC + 0.85, -0.29], false);
-      poser(ctx, racine, 'lucarneToit', boite(device, 1.25, 0.18, 1.05), m.zinc, [x, hC + 2.2, -0.75], false);
-    }
-  }
+
+  // Toit à la Mansart en zinc et souches de cheminée.
+  poser(ctx, racine, 'toit', mansarde(device, L, P), m.zinc, [0, hToit, -P / 2]);
   const r = T.alea(im.graine * 31);
   for (let i = 0; i < Math.max(2, Math.round(L / 7)); i++) {
     const x = -L / 2 + 2 + r() * (L - 4);
-    poser(ctx, racine, 'cheminee', boite(device, 0.9, 1.6, 2.2), m.cheminee, [x, hC + 3.4, -P / 2 + (r() - 0.5) * 2]);
+    poser(ctx, racine, 'cheminee', boite(device, 0.9, 1.6, 2.2), m.cheminee, [x, hToit + 3.4, -P / 2 + (r() - 0.5) * 2]);
   }
-  // Plaque de rue (nom fictif) sur certains angles.
-  if (im.graine % 3 === 0) plaqueRue(ctx, racine, L / 2 - 0.8, 3.6, ['RUE DES TANNEURS', 'BD DES ARCADES', 'RUE DU LAVOIR', 'RUE DES MOULINS'][im.graine % 4]!);
+  // Plaque de rue (nom fictif) sur le retour du bâtiment, côté rue.
+  if (im.graine % 3 === 0) plaqueRue(ctx, racine, L / 2 + 0.01, 4.2, ['RUE DES TANNEURS', 'BD DES ARCADES', 'RUE DU LAVOIR', 'RUE DES MOULINS'][im.graine % 4]!);
 }
 
 function plaqueRue(ctx: Contexte, parent: pc.Entity, x: number, y: number, nom: string): void {
@@ -351,68 +428,69 @@ function plaqueRue(ctx: Contexte, parent: pc.Entity, x: number, y: number, nom: 
   m.diffuseMap = T.texture(ctx.device, c, true, ctx.anis, false);
   m.gloss = 0.7;
   m.update();
-  poser(ctx, parent, 'plaque', panneau(ctx.device, 0.9, 0.34), m, [x - 0.45, y, 0.06], false);
+  const p = poser(ctx, parent, 'plaque', panneau(ctx.device, 0.9, 0.34), m, [x, y, -1.4], false);
+  p.setLocalEulerAngles(0, 90, 0);
 }
 
 // ——————————————————————————————————————————————— Monument
 
 function monument(ctx: Contexte): void {
-  const { device, m, racine } = ctx;
-  const mon = new pc.Entity('monument');
-  racine.addChild(mon);
-  // Emmarchement (3 marches) sur l'esplanade.
-  [9, 8.1, 7.2].forEach((c, i) => poser(ctx, mon, `marche${i}`, boite(device, c, 0.14 + 0.32 * (i + 1), c), m.pierreClaire, [0, 0, 0]));
-  // Piédestal à corniches, avec quatre bas-reliefs en creux suggérés par des panneaux de bronze.
-  poser(ctx, mon, 'base', boite(device, 5.2, 0.7, 5.2), m.corniche, [0, 1.1, 0]);
-  poser(ctx, mon, 'plinthe', boite(device, 4.6, 0.25, 4.6), m.pierreClaire, [0, 1.8, 0]);
-  poser(ctx, mon, 'piedestal', boite(device, 4.0, 3.4, 4.0), m.pierreClaire, [0, 2.05, 0]);
-  poser(ctx, mon, 'corniche', boite(device, 4.6, 0.35, 4.6), m.corniche, [0, 5.45, 0]);
-  poser(ctx, mon, 'attique', boite(device, 3.0, 1.2, 3.0), m.pierreClaire, [0, 5.8, 0]);
-  poser(ctx, mon, 'couronnement', boite(device, 3.4, 0.25, 3.4), m.corniche, [0, 7.0, 0]);
-  for (const r of [0, 90, 180, 270]) {
-    const p = new pc.Entity('faceRelief');
-    p.setLocalEulerAngles(0, r, 0);
-    mon.addChild(p);
-    poser(ctx, p, 'cadre', boite(device, 2.4, 2.1, 0.08), m.corniche, [0, 2.65, 2.0], false);
-    poser(ctx, p, 'relief', panneau(device, 2.1, 1.8), m.bronze, [-1.05, 2.8, 2.05], false);
+  // Piédestal modélisé dans Blender (blender/scripts/monument.py) : emmarchement en granit, socle mouluré,
+  // dé à plaques de bronze encadrées, corniche, attique. Couronnement à 7,13 m.
+  const mon = copieModele(ctx.res.monument, 'monument');
+  mon.setLocalPosition(0, 0.14, 0);
+  const remplacements: Record<string, pc.Material> = { granit: ctx.m.granit, pierre_claire: ctx.m.pierreClaire, bronze: ctx.m.bronze };
+  for (const r of mon.findComponents('render') as pc.RenderComponent[]) {
+    r.castShadows = true;
+    r.receiveShadows = true;
+    for (const mi of r.meshInstances) {
+      const m = mi.material ? remplacements[mi.material.name] : undefined;
+      if (m) mi.material = m;
+    }
   }
+  ctx.racine.addChild(mon);
   // Statue allégorique (gothic_statue, Poly Haven) : figure drapée et couronnée, livre et chaînes.
   // 1,74 m à l'origine, mise à l'échelle d'un monument (≈ 3,8 m) sur le couronnement.
   const statue = copieModele(ctx.res.statue, 'allegorie');
-  statue.setLocalPosition(-0.9, 7.25, 0.1); // le maillage n'est pas centré sur son origine
+  statue.setLocalPosition(-0.9, 7.13 + 0.14, 0.1); // le maillage n'est pas centré sur son origine
   statue.setLocalScale(2.2, 2.2, 2.2);
   statue.setLocalEulerAngles(0, -90, 0); // regarde vers l'ouest, d'où l'on arrive
+  // La statue Poly Haven est en pierre moussue ; on l'assombrit vers un bronze patiné, plus courant
+  // sur les monuments parisiens et plus lisible contre le ciel.
+  const patine = new Map<pc.Material, pc.StandardMaterial>();
   for (const r of statue.findComponents('render') as pc.RenderComponent[]) {
     r.castShadows = true;
     r.receiveShadows = true;
+    for (const mi of r.meshInstances) {
+      const origine = mi.material as pc.StandardMaterial;
+      let copie = patine.get(origine);
+      if (!copie) {
+        copie = origine.clone();
+        copie.diffuse = new pc.Color().fromString('#5d5444');
+        copie.metalness = 0.55;
+        copie.gloss = Math.max(copie.gloss, 0.5);
+        copie.update();
+        patine.set(origine, copie);
+      }
+      mi.material = copie;
+    }
   }
-  mon.addChild(statue);
+  ctx.racine.addChild(statue);
 }
 
 // ——————————————————————————————————————————————— Mobilier et végétation
 
 function arbre(ctx: Contexte, x: number, z: number): void {
-  const { m, racine } = ctx;
+  // Platane commun généré dans Blender (blender/scripts/platane.py) : 3 variantes, rotation aléatoire.
   const r = T.alea(Math.round(x * 13 + z * 7 + 1000));
-  const a = new pc.Entity('platane');
-  a.setLocalPosition(x, 0.14, z);
-  a.setLocalEulerAngles(0, r() * 360, 0);
-  racine.addChild(a);
-  // Fût légèrement conique (écorce de platane Poly Haven), puis charpentières obliques.
-  primitive(ctx, a, 'cone', m.ecorce, [0, 2.5, 0], [0.6, 5.0, 0.6], true);
-  const nb = ctx.haute ? 4 : 3;
-  for (let i = 0; i < nb; i++) {
-    const ang = (i * 360) / nb + r() * 30;
-    const b = new pc.Entity('branche');
-    b.setLocalPosition(0, 4.3, 0);
-    b.setLocalEulerAngles(0, ang, 0);
-    a.addChild(b);
-    primitive(ctx, b, 'capsule', m.ecorce, [0.7, 1.1, 0], [0.2, 2.6, 0.2], ctx.haute, [0, 0, -38 - r() * 10]);
+  const variante = ctx.res.platanes[Math.floor(r() * ctx.res.platanes.length)]!;
+  const e = instancier(ctx, variante, 'platane', x, z, r() * 360);
+  for (const rc of e.findComponents('render') as pc.RenderComponent[]) {
+    for (const mi of rc.meshInstances) {
+      if (mi.material?.name === 'ecorce') mi.material = ctx.m.ecorce;
+      else if (mi.material?.name === 'feuillage') mi.material = ctx.m.feuilles;
+    }
   }
-  // Houppier en parasol : deux ellipsoïdes de cartes (bas large, haut plus étroit).
-  const rot = r() * 1000;
-  ctx.houppiers.push({ x, y: 6.6 + r() * 0.4, z, rayonH: 3.4, rayonV: 1.9, cartes: ctx.haute ? 130 : 55, graine: Math.round(rot) });
-  ctx.houppiers.push({ x: x + (r() - 0.5), y: 8.0, z: z + (r() - 0.5), rayonH: 2.2, rayonV: 1.3, cartes: ctx.haute ? 50 : 22, graine: Math.round(rot) + 1 });
 }
 
 /**
@@ -504,13 +582,15 @@ export function construireDecor(app: pc.Application, carte: Carte, qualite: Qual
   const device = app.graphicsDevice;
   const anis = Math.min(haute ? 8 : 2, device.maxAnisotropy);
   // Regroupement des objets statiques : moins d'appels de dessin, surtout sur mobile.
-  const groupe = app.batcher!.addGroup('decor', false, 40).id;
+  // Cellules de 200 m : toute la place tient dans une cellule, un lot par matériau (limité à 65 535 sommets).
+  const groupe = app.batcher!.addGroup('decor', false, 200).id;
   const racine = new pc.Entity('decor');
   app.root.addChild(racine);
-  const ctx: Contexte = { app, device, haute, anis, groupe, racine, m: creerMateriaux(device, haute, anis, res), res, houppiers: [] };
+  const ctx: Contexte = { app, device, haute, anis, groupe, racine, m: creerMateriaux(device, haute, anis, res), res };
 
   const ambiance = lumiere(ctx);
   sols(ctx, carte);
+  ctx.kit = gabaritsFacade(ctx);
   for (const im of carte.immeubles) immeuble(ctx, im);
   monument(ctx);
   for (const o of carte.obstacles) {
@@ -520,8 +600,5 @@ export function construireDecor(app: pc.Application, carte: Carte, qualite: Qual
     else if (o.genre === 'colonne') colonne(ctx, o);
     else if (o.genre === 'barriere') barrieres(ctx, o);
   }
-  // Tous les houppiers en un seul maillage.
-  const feuillage = entite('feuillage', cartesFeuillage(device, ctx.houppiers, haute ? 1.6 : 2.1), ctx.m.feuilles, true);
-  racine.addChild(feuillage);
   return ambiance;
 }

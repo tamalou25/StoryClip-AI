@@ -31,7 +31,8 @@ async function ecrire(f, buf) {
 // ——————————————————————————————— Textures PBR (Poly Haven)
 // arm = AO (R), rugosité (G), métal (B).
 const TEXTURES = [
-  { id: 'concrete_tiles_02', haute: 2048, basse: 512 },
+  // 1024 px suffisent pour un motif de 1,8 m (≈ 560 px/m) ; 2048 coûtait 64 Mo de mémoire GPU.
+  { id: 'concrete_tiles_02', haute: 1024, basse: 512 },
   { id: 'cobblestone_floor_09', haute: 1024, basse: 512 },
   { id: 'asphalt_02', haute: 1024, basse: 512 },
   { id: 'bark_platanus', haute: 1024, basse: 256 },
@@ -134,12 +135,12 @@ console.log('HDRI');
 await mkdir(join(OUT, 'hdri'), { recursive: true });
 for (const res of ['1k', '2k']) {
   const dest = join(OUT, 'hdri', `ciel-${res}.hdr`);
-  await copyFile(join(SRC, 'polyhaven', 'kloofendal_48d_partly_cloudy_puresky', `${res}.hdr`), dest);
+  await copyFile(join(SRC, 'polyhaven', 'kloofendal_38d_partly_cloudy_puresky', `${res}.hdr`), dest);
   console.log('  →', dest.replace(RACINE + '/', ''), await taille(dest));
 }
 
 // ——————————————————————————————— Modèles
-async function optimiser(entree, sortie, { ratio = 1, texture = 1024, garderNoeuds = null, decalageX = 0, animations = null } = {}) {
+async function optimiser(entree, sortie, { ratio = 1, texture = 1024, garderNoeuds = null, decalageX = 0, animations = null, erreur = 0.002 } = {}) {
   const doc = await io.read(entree);
   const racine = doc.getRoot();
   if (garderNoeuds) {
@@ -153,7 +154,7 @@ async function optimiser(entree, sortie, { ratio = 1, texture = 1024, garderNoeu
   }
   if (animations) for (const a of racine.listAnimations()) if (!animations.includes(a.getName())) a.dispose();
   const etapes = [dedup(), prune()];
-  if (ratio < 1) etapes.push(weld(), simplify({ simplifier: MeshoptSimplifier, ratio, error: 0.002 }));
+  if (ratio < 1) etapes.push(weld(), simplify({ simplifier: MeshoptSimplifier, ratio, error: erreur }));
   if (animations) etapes.push(resample());
   if (racine.listTextures().length) etapes.push(textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [texture, texture], quality: 85 }));
   etapes.push(prune());
@@ -166,24 +167,22 @@ async function optimiser(entree, sortie, { ratio = 1, texture = 1024, garderNoeu
 
 console.log('Modèles');
 const lampe = join(SRC, 'polyhaven', 'street_lamp_01', 'street_lamp_01.gltf');
-await optimiser(lampe, join(OUT, 'modeles', 'lampadaire-haute.glb'), { ratio: 0.5, texture: 1024 });
+await optimiser(lampe, join(OUT, 'modeles', 'lampadaire-haute.glb'), { ratio: 0.5, texture: 512 });
 await optimiser(lampe, join(OUT, 'modeles', 'lampadaire-basse.glb'), { ratio: 0.12, texture: 256 });
 
 // Statue allégorique (figure drapée, couronne, livre et chaînes) pour le monument.
 const statue = join(SRC, 'polyhaven', 'gothic_statue', 'gothic_statue.gltf');
 await optimiser(statue, join(OUT, 'modeles', 'statue-haute.glb'), { ratio: 0.6, texture: 1024 });
-await optimiser(statue, join(OUT, 'modeles', 'statue-basse.glb'), { ratio: 0.2, texture: 512 });
+await optimiser(statue, join(OUT, 'modeles', 'statue-basse.glb'), { ratio: 0.12, texture: 512, erreur: 0.01 });
 
 // Banc droit : un seul module (pieds aux deux extrémités), recentré sur l'origine.
 const MODULE_BANC = ['crossbar', 'legs_double', 'legs_single', 'suspended_support_01', 'back_support_r', 'back_support_l', 'arm_rest_01', 'arm_rest_02', 'seat', 'seat_back'];
 const banc = join(SRC, 'polyhaven', 'modular_street_seating', 'modular_street_seating.gltf');
 await optimiser(banc, join(OUT, 'modeles', 'banc-haute.glb'), { garderNoeuds: MODULE_BANC, decalageX: 1.16, texture: 512 });
-await optimiser(banc, join(OUT, 'modeles', 'banc-basse.glb'), { garderNoeuds: MODULE_BANC, decalageX: 1.16, texture: 256, ratio: 0.4 });
+await optimiser(banc, join(OUT, 'modeles', 'banc-basse.glb'), { garderNoeuds: MODULE_BANC, decalageX: 1.16, texture: 256, ratio: 0.2, erreur: 0.01 });
 
-// Personnages Quaternius : on ne garde que les animations utilisées.
-const ANIMS = ['Idle', 'Walk', 'Run', 'Wave', 'Idle_Neutral'];
-await optimiser(join(SRC, 'quaternius', 'Casual_Hoodie.gltf'), join(OUT, 'modeles', 'manifestant.glb'), { animations: ANIMS });
-await optimiser(join(SRC, 'quaternius', 'Casual_2.gltf'), join(OUT, 'modeles', 'passant.glb'), { animations: ANIMS });
+// Personnages Quaternius : préparés dans Blender (lissage, animations utilisées seulement) par
+// blender/scripts/personnage.py → modeles/manifestant-lisse.glb et passant-lisse.glb.
 
 // Licence d'origine du pack de personnages, conservée à côté des fichiers.
 await copyFile(join(SRC, 'quaternius', 'License.txt'), join(OUT, 'modeles', 'LICENCE-Quaternius.txt'));

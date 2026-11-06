@@ -113,94 +113,6 @@ export function normales(hauteur: Float32Array, l: number, h: number, force: num
 
 // ——————————————————————————————————————————————— Façades
 
-const PIERRE = [222, 210, 186];
-
-/**
- * Une travée d'étage haussmannien : 3 m de large × 3,1 m de haut, porte-fenêtre centrale,
- * encadrement mouluré, appui, assises de pierre de taille. Couleur, hauteur et brillance.
- */
-export function travee(px = 256): Couches {
-  const l = px;
-  const h = Math.round(px * (3.1 / 3));
-  const ppm = l / 3;
-  const [c, ctx] = toile(l, h);
-  const [cb, cbx] = toile(l, h);
-  const hauteur = new Float32Array(l * h).fill(0.6);
-  const peindre = (x: number, y: number, w: number, hh: number, couleur: string, haut: number, brillance = 30) => {
-    ctx.fillStyle = couleur;
-    ctx.fillRect(x, y, w, hh);
-    cbx.fillStyle = `rgb(${brillance},${brillance},${brillance})`;
-    cbx.fillRect(x, y, w, hh);
-    for (let yy = Math.max(0, Math.floor(y)); yy < Math.min(h, y + hh); yy++)
-      for (let xx = Math.max(0, Math.floor(x)); xx < Math.min(l, x + w); xx++) hauteur[yy * l + xx] = haut;
-  };
-
-  // Pierre de taille : assises de 0,5 m, joints fins.
-  peindre(0, 0, l, h, `rgb(${PIERRE.join(',')})`, 0.6, 40);
-  ctx.fillStyle = 'rgba(120,108,88,0.35)';
-  for (let y = 0; y < h; y += 0.5 * ppm) {
-    ctx.fillRect(0, Math.round(y), l, 1);
-    for (let yy = Math.round(y); yy < Math.round(y) + 1 && yy < h; yy++) for (let x = 0; x < l; x++) hauteur[yy * l + x] = 0.5;
-  }
-
-  // Porte-fenêtre : 1,25 m × 2,35 m, linteau à 2,65 m.
-  const fx = (3 - 1.25) / 2 * ppm;
-  const fw = 1.25 * ppm;
-  const fy = (3.1 - 2.65) * ppm;
-  const fh = 2.35 * ppm;
-  // Encadrement mouluré (chambranle) et clé.
-  peindre(fx - 0.14 * ppm, fy - 0.16 * ppm, fw + 0.28 * ppm, fh + 0.16 * ppm, 'rgb(230,220,198)', 0.8, 45);
-  peindre(l / 2 - 0.12 * ppm, fy - 0.3 * ppm, 0.24 * ppm, 0.22 * ppm, 'rgb(232,222,200)', 0.9, 45);
-  // Embrasure (ombre) puis vitrage.
-  peindre(fx, fy, fw, fh, 'rgb(70,64,58)', 0.15, 20);
-  const vitre = ctx.createLinearGradient(0, fy, 0, fy + fh);
-  vitre.addColorStop(0, '#93a8b8');
-  vitre.addColorStop(0.45, '#4d6273');
-  vitre.addColorStop(1, '#2a3540');
-  const cadre = 0.06 * ppm;
-  ctx.fillStyle = vitre;
-  ctx.fillRect(fx + cadre, fy + cadre, fw - 2 * cadre, fh - 2 * cadre);
-  cbx.fillStyle = 'rgb(235,235,235)';
-  cbx.fillRect(fx + cadre, fy + cadre, fw - 2 * cadre, fh - 2 * cadre);
-  // Rideaux discrets, imposte, montants et petits-bois (bois peint crème).
-  ctx.fillStyle = 'rgba(236,228,210,0.45)';
-  ctx.fillRect(fx + cadre, fy + 0.5 * ppm, 0.22 * ppm, fh - 0.6 * ppm);
-  ctx.fillRect(fx + fw - cadre - 0.22 * ppm, fy + 0.5 * ppm, 0.22 * ppm, fh - 0.6 * ppm);
-  const bois = 'rgb(232,228,218)';
-  peindre(fx, fy, fw, cadre, bois, 0.35, 60);
-  peindre(fx, fy + fh - cadre, fw, cadre, bois, 0.35, 60);
-  peindre(fx, fy, cadre, fh, bois, 0.35, 60);
-  peindre(fx + fw - cadre, fy, cadre, fh, bois, 0.35, 60);
-  peindre(l / 2 - cadre / 2, fy + 0.45 * ppm, cadre, fh - 0.45 * ppm, bois, 0.35, 60);
-  peindre(fx, fy + 0.45 * ppm, fw, cadre * 0.8, bois, 0.35, 60);
-  for (const k of [1, 2, 3]) peindre(fx, fy + 0.45 * ppm + (k * (fh - 0.45 * ppm)) / 4, fw, 2, bois, 0.33, 60);
-  // Bandeau d'étage (corniche légère) en bas de la travée.
-  peindre(0, h - 0.12 * ppm, l, 0.12 * ppm, 'rgb(214,202,178)', 0.85, 40);
-  ctx.fillStyle = 'rgba(80,70,55,0.35)';
-  ctx.fillRect(0, h - 0.12 * ppm - 2, l, 2);
-
-  // Salissures verticales (coulures) et variation de la pierre.
-  const sale = fbm(l, h, 40, 41, 4);
-  grain(ctx, l, h, sale, 26);
-  const coulures = document.createElement('canvas');
-  coulures.width = l;
-  coulures.height = h;
-  const cc = coulures.getContext('2d')!;
-  const r = alea(43);
-  for (let i = 0; i < 18; i++) {
-    const x = r() * l;
-    const g = cc.createLinearGradient(0, 0, 0, h);
-    g.addColorStop(0, 'rgba(60,55,45,0)');
-    g.addColorStop(0.7, `rgba(60,55,45,${0.05 + r() * 0.06})`);
-    g.addColorStop(1, 'rgba(60,55,45,0)');
-    cc.fillStyle = g;
-    cc.fillRect(x, 0, 2 + r() * 6, h);
-  }
-  ctx.drawImage(coulures, 0, 0);
-  const fin = fbm(l, h, 4, 47, 2);
-  for (let i = 0; i < hauteur.length; i++) hauteur[i] = hauteur[i]! + (fin[i]! - 0.5) * 0.04;
-  return { couleur: c, hauteur, brillance: cb, largeur: l, hauteurPx: h };
-}
 
 /** Garde-corps en fer forgé (motif répété, transparence) : 1,5 m × 1 m. */
 export function gardeCorps(px = 256): HTMLCanvasElement {
@@ -228,70 +140,145 @@ export function gardeCorps(px = 256): HTMLCanvasElement {
   return c;
 }
 
-/** Rez-de-chaussée commercial (fictif) : arcades, vitrines, enseignes inventées. Hauteur 4,6 m. */
-export function rezDeChaussee(longueur: number, graine: number, ppm = 40): Couches {
-  const l = Math.round(longueur * ppm);
-  const h = Math.round(4.6 * ppm);
-  const [c, ctx] = toile(l, h);
-  const [cb, cbx] = toile(l, h);
-  const hauteur = new Float32Array(l * h).fill(0.7);
-  const r = alea(graine);
-  ctx.fillStyle = `rgb(${PIERRE[0]! - 8},${PIERRE[1]! - 8},${PIERRE[2]! - 10})`;
-  ctx.fillRect(0, 0, l, h);
-  cbx.fillStyle = 'rgb(40,40,40)';
-  cbx.fillRect(0, 0, l, h);
-  // Bossages (refends horizontaux) caractéristiques du soubassement.
-  ctx.fillStyle = 'rgba(110,98,80,0.5)';
-  for (let y = 0.45 * ppm; y < h; y += 0.45 * ppm) ctx.fillRect(0, y, l, 2);
 
-  const enseignes = ['CAFÉ DU CANAL', 'LIBRAIRIE', 'BOULANGERIE', 'PHARMACIE', 'BRASSERIE', 'FLEURS', 'TABAC PRESSE', 'OPTIQUE'];
-  const couleursVitrine = ['#24372f', '#5a1f1f', '#1f2c45', '#3b2a1e', '#2c2c2c'];
-  const travees = Math.max(1, Math.round(longueur / 3));
-  const pas = l / travees;
-  let enseigneEnCours = -1;
-  for (let i = 0; i < travees; i++) {
-    const x = i * pas + pas * 0.12;
-    const w = pas * 0.76;
-    const y = 0.55 * ppm;
-    const hh = h - 0.55 * ppm;
-    if (i % 3 === 0) enseigneEnCours = Math.floor(r() * enseignes.length);
-    const entree = i % 3 === 1;
-    const teinte = couleursVitrine[(enseigneEnCours + graine) % couleursVitrine.length]!;
-    // Devanture en bois peint.
-    ctx.fillStyle = teinte;
-    ctx.fillRect(x, y, w, hh);
-    for (let yy = Math.floor(y); yy < h; yy++) for (let xx = Math.floor(x); xx < x + w; xx++) hauteur[yy * l + xx] = 0.35;
-    // Bandeau d'enseigne.
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    ctx.fillRect(x, y, w, 0.5 * ppm);
-    // Vitrage intérieur éclairé chaud.
-    const g = ctx.createLinearGradient(0, y + 0.7 * ppm, 0, h);
-    g.addColorStop(0, entree ? '#2b2620' : '#9a8a6c');
-    g.addColorStop(1, entree ? '#15120f' : '#4a3f30');
-    ctx.fillStyle = g;
-    ctx.fillRect(x + 0.1 * ppm, y + 0.7 * ppm, w - 0.2 * ppm, hh - (entree ? 0.75 : 1.25) * ppm);
-    cbx.fillStyle = 'rgb(220,220,220)';
-    cbx.fillRect(x + 0.1 * ppm, y + 0.7 * ppm, w - 0.2 * ppm, hh - 1.25 * ppm);
-    if (!entree) {
-      // Allège basse et meneau.
-      ctx.fillStyle = teinte;
-      ctx.fillRect(x, h - 0.55 * ppm, w, 0.55 * ppm);
-      ctx.fillRect(x + w / 2 - 2, y + 0.7 * ppm, 4, hh);
+/**
+ * Joints d'assise de la pierre de taille (calcaire parisien) : assises de 0,5 m, blocs de 0,8 à 1,4 m
+ * décalés, légère variation de ton par bloc. Sert de carte de détail (multiplication) sur la pierre.
+ * Toile = 2 m × 2 m.
+ */
+export function jointsPierre(px = 512): Couches {
+  const metres = 2;
+  const ppm = px / metres;
+  const [c, ctx] = toile(px, px);
+  const hauteur = new Float32Array(px * px).fill(1);
+  const r = alea(97);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, px, px);
+  const assise = 0.5 * ppm;
+  const joint = Math.max(1, Math.round(0.006 * ppm));
+  for (let rang = 0; rang < metres / 0.5; rang++) {
+    const y0 = Math.round(rang * assise);
+    let x = -r() * ppm;
+    while (x < px) {
+      const longueur = (0.8 + r() * 0.6) * ppm;
+      const ton = 243 + Math.floor(r() * 12);
+      ctx.fillStyle = `rgb(${ton},${ton - 2},${ton - 5})`;
+      for (const decal of [-px, 0, px]) ctx.fillRect(x + decal, y0, longueur, assise);
+      ctx.fillStyle = 'rgb(206,199,187)';
+      for (const decal of [-px, 0, px]) ctx.fillRect(x + decal, y0, joint, assise);
+      for (let yy = y0; yy < y0 + assise && yy < px; yy++) for (let k = 0; k < joint; k++) {
+        const xx = ((Math.round(x) + k) % px + px) % px;
+        hauteur[yy * px + xx] = 0;
+      }
+      x += longueur;
     }
+    ctx.fillStyle = 'rgb(206,199,187)';
+    ctx.fillRect(0, y0, px, joint);
+    for (let yy = y0; yy < y0 + joint && yy < px; yy++) for (let xx = 0; xx < px; xx++) hauteur[yy * px + xx] = 0;
   }
-  // Enseignes par groupe de trois travées.
-  ctx.font = `600 ${Math.round(0.28 * ppm)}px Georgia, 'Times New Roman', serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  const r2 = alea(graine);
-  for (let g = 0; g < travees; g += 3) {
-    const nom = enseignes[Math.floor(r2() * enseignes.length)]!;
-    const cx = (g + Math.min(3, travees - g) / 2) * pas;
-    ctx.fillStyle = '#e9dcc0';
-    ctx.fillText(nom, cx, 0.55 * ppm + 0.26 * ppm);
+  return { couleur: c, hauteur, largeur: px, hauteurPx: px };
+}
+
+/** Une devanture fictive (bois peint, enseigne, vitrine éclairée, soubassement). */
+const ENSEIGNES = ['CAFÉ DU CANAL', 'BOULANGERIE', 'LIBRAIRIE', 'PHARMACIE', 'FLEURISTE', 'BRASSERIE', 'TABAC PRESSE', 'OPTICIEN'];
+const BOIS_DEVANTURE = ['#22362c', '#4f1d22', '#1e2b40', '#1b1b1b', '#3a2a1f', '#2f4547', '#5b4a2e', '#3d2433'];
+
+/**
+ * Atlas de 8 devantures (4 × 2 cellules de 256 × 400 px), couleur et brillance.
+ * Chaque cellule couvre la baie de boutique du kit (2,3 × 3,55 m), UV 0–1.
+ */
+export function devantures(echelle = 1): { couleur: HTMLCanvasElement; brillance: HTMLCanvasElement } {
+  const cw = Math.round(256 * echelle);
+  const ch = Math.round(400 * echelle);
+  const [c, g] = toile(cw * 4, ch * 2);
+  const [cb, gb] = toile(cw * 4, ch * 2);
+  const r = alea(131);
+  const ppm = ch / 3.55;
+  for (let i = 0; i < 8; i++) {
+    const x0 = (i % 4) * cw;
+    const y0 = Math.floor(i / 4) * ch;
+    const bois = BOIS_DEVANTURE[i]!;
+    g.fillStyle = bois;
+    g.fillRect(x0, y0, cw, ch);
+    gb.fillStyle = 'rgb(95,95,95)';
+    gb.fillRect(x0, y0, cw, ch);
+    // Enseigne (bandeau 0,55 m) : lettres claires à empattements.
+    const hb = 0.55 * ppm;
+    g.fillStyle = 'rgba(0,0,0,0.25)';
+    g.fillRect(x0 + 6 * echelle, y0 + 6 * echelle, cw - 12 * echelle, hb - 8 * echelle);
+    g.fillStyle = i === 6 ? '#e8c35a' : '#efe4c8';
+    g.font = `600 ${Math.round(0.2 * ppm)}px Georgia, 'Times New Roman', serif`;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(ENSEIGNES[i]!, x0 + cw / 2, y0 + hb / 2 + 1, cw - 24 * echelle);
+    // Vitrine (deux châssis) et porte vitrée centrale.
+    const yv = y0 + hb + 10 * echelle;
+    const hv = ch - hb - 0.5 * ppm - 10 * echelle;
+    const montant = Math.max(2, Math.round(8 * echelle));
+    const largeurs = [0.36, 0.28, 0.36].map((f) => f * (cw - 4 * montant));
+    let x = x0 + montant;
+    largeurs.forEach((w, k) => {
+      const porte = k === 1;
+      const h = porte ? ch - hb - 14 * echelle : hv;
+      const grad = g.createLinearGradient(0, yv, 0, yv + h);
+      grad.addColorStop(0, porte ? '#2a2620' : '#a08a64');
+      grad.addColorStop(0.55, porte ? '#1e1b17' : '#6c5a42');
+      grad.addColorStop(1, porte ? '#14120f' : '#3c3226');
+      g.fillStyle = grad;
+      g.fillRect(x, yv, w, h);
+      if (!porte) {
+        // Silhouettes d'étagères et de luminaires derrière la vitre.
+        g.fillStyle = 'rgba(40,30,20,0.35)';
+        for (let e = 1; e < 4; e++) g.fillRect(x + 4 * echelle, yv + (h * e) / 4, w - 8 * echelle, Math.max(1, 3 * echelle));
+        g.fillStyle = 'rgba(255,226,170,0.55)';
+        g.beginPath();
+        g.arc(x + w / 2, yv + 14 * echelle, (5 + r() * 3) * echelle, 0, Math.PI * 2);
+        g.fill();
+      }
+      // Reflet du ciel dans le haut de la vitre.
+      const reflet = g.createLinearGradient(x, yv, x + w, yv + h * 0.6);
+      reflet.addColorStop(0, 'rgba(200,215,230,0.28)');
+      reflet.addColorStop(1, 'rgba(200,215,230,0)');
+      g.fillStyle = reflet;
+      g.fillRect(x, yv, w, h * 0.6);
+      gb.fillStyle = 'rgb(235,235,235)';
+      gb.fillRect(x, yv, w, h);
+      x += w + montant;
+    });
+    // Soubassement à panneaux moulurés.
+    const ys = y0 + ch - 0.5 * ppm;
+    g.strokeStyle = 'rgba(255,255,255,0.12)';
+    g.lineWidth = Math.max(1, 2 * echelle);
+    g.strokeRect(x0 + 14 * echelle, ys + 8 * echelle, cw * 0.36 - 10 * echelle, 0.5 * ppm - 18 * echelle);
+    g.strokeRect(x0 + cw - 14 * echelle - (cw * 0.36 - 10 * echelle), ys + 8 * echelle, cw * 0.36 - 10 * echelle, 0.5 * ppm - 18 * echelle);
   }
-  grain(ctx, l, h, fbm(l, h, 32, graine + 3, 3), 18);
-  return { couleur: c, hauteur, brillance: cb, largeur: l, hauteurPx: h };
+  return { couleur: c, brillance: cb };
+}
+
+/**
+ * Toiles de stores bannes : 4 variantes empilées (bandes verticales, lambrequin plus sombre en bas).
+ * Variante i : v ∈ [i/4, (i+1)/4] ; u = largeur du store.
+ */
+export function toilesStores(): HTMLCanvasElement {
+  const l = 256;
+  const h = 64;
+  const [c, g] = toile(l, h * 4);
+  const variantes: [string, string][] = [['#2f5a44', '#ece6d6'], ['#8c2a25', '#efe7d6'], ['#22324f', '#e8e0cc'], ['#6a1f2e', '#6a1f2e']];
+  variantes.forEach(([a, b], i) => {
+    const y0 = i * h;
+    const bandes = 12;
+    for (let k = 0; k < bandes; k++) {
+      g.fillStyle = k % 2 ? b : a;
+      g.fillRect((k * l) / bandes, y0, l / bandes + 1, h);
+    }
+    // Lambrequin (dernier quart en v) : bord plus sombre, comme une toile plus épaisse.
+    g.fillStyle = 'rgba(0,0,0,0.18)';
+    g.fillRect(0, y0 + h * 0.8, l, h * 0.2);
+    // Usure légère de la toile.
+    g.fillStyle = 'rgba(255,255,255,0.05)';
+    for (let k = 0; k < 40; k++) g.fillRect(((k * 53) % l), y0 + ((k * 29) % h), 6, 1);
+  });
+  return c;
 }
 
 /** Zinc de toiture (bleu-gris) avec tasseaux verticaux tous les 0,5 m. Toile = 2 m. */
@@ -320,10 +307,12 @@ export function bronze(px = 128): Couches {
   const img = ctx.createImageData(px, px);
   for (let i = 0; i < px * px; i++) {
     const v = n[i]!;
-    const vert = Math.max(0, (v - 0.5) * 2.2);
-    img.data[i * 4] = 92 * (1 - vert) + 88 * vert;
-    img.data[i * 4 + 1] = 74 * (1 - vert) + 128 * vert;
-    img.data[i * 4 + 2] = 50 * (1 - vert) + 108 * vert;
+    // Bronze sombre, patine vert-de-gris discrète seulement dans les creux.
+    const vert = Math.max(0, (v - 0.62) * 1.6);
+    const base = 0.85 + v * 0.3;
+    img.data[i * 4] = (70 * (1 - vert) + 70 * vert) * base;
+    img.data[i * 4 + 1] = (52 * (1 - vert) + 92 * vert) * base;
+    img.data[i * 4 + 2] = (34 * (1 - vert) + 78 * vert) * base;
     img.data[i * 4 + 3] = 255;
   }
   ctx.putImageData(img, 0, 0);

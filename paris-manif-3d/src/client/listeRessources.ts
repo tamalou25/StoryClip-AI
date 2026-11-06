@@ -17,7 +17,11 @@ export function fichiersRessources(q: QualiteRessources) {
     lampadaire: `modeles/lampadaire-${q}.glb`,
     banc: `modeles/banc-${q}.glb`,
     statue: `modeles/statue-${q}.glb`,
-    manifestant: 'modeles/manifestant.glb',
-    passant: 'modeles/passant.glb',
+    facade: `modeles/facade-${q}.glb`,
+    monument: `modeles/monument-${q}.glb`,
+    platanes: (['a', 'b', 'c'] as const).map((v) => `modeles/platane-${v}-${q}.glb`),
+    // Personnages Quaternius lissés dans Blender (blender/scripts/personnage.py).
+    manifestant: 'modeles/manifestant-lisse.glb',
+    passant: 'modeles/passant-lisse.glb',
   };
 }

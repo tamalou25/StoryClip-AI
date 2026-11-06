@@ -25,7 +25,7 @@ function piste(conteneur: pc.ContainerResource, nom: string): pc.AnimTrack {
 }
 
 /** Remplace les couleurs de certains matériaux (copie locale : les autres instances ne changent pas). */
-function teindre(modele: pc.Entity, teintes: Record<string, string>, gloss: number): void {
+function teindre(modele: pc.Entity, teintes: Record<string, string>, rugositeMin: number): void {
   const copies = new Map<pc.Material, pc.StandardMaterial>();
   for (const r of modele.findComponents('render') as pc.RenderComponent[]) {
     r.castShadows = true;
@@ -36,8 +36,9 @@ function teindre(modele: pc.Entity, teintes: Record<string, string>, gloss: numb
         copie = origine.clone();
         const hex = teintes[origine.name];
         if (hex) copie.diffuse = new pc.Color().fromString(hex);
-        // Tissus et peau mats : le pack est réglé assez brillant pour un rendu « jouet ».
-        if (origine.name !== 'Eye') copie.gloss = Math.min(copie.gloss, gloss);
+        // Matériaux glTF : PlayCanvas active glossInvert, « gloss » y est donc une RUGOSITÉ. Les modèles
+        // lissés fournissent déjà 0,85 (tissus), 0,8 (cheveux), 0,55 (peau) : on garantit seulement un minimum.
+        if (origine.name !== 'Eye') copie.gloss = Math.max(copie.gloss, rugositeMin);
         copie.metalness = 0;
         copie.update();
         copies.set(origine, copie);
@@ -95,7 +96,7 @@ export class Personnage3D {
     this.modele.addChild(conteneur.instantiateRenderEntity());
     this.modele.setLocalEulerAngles(0, 180, 0); // le modèle regarde vers +z ; le jeu, vers −z
     this.racine.addChild(this.modele);
-    teindre(this.modele, teintes, 0.3);
+    teindre(this.modele, teintes, 0.5);
 
     this.modele.addComponent('anim', { activate: true });
     const anim = this.modele.anim!;
@@ -189,7 +190,7 @@ export function passant(app: pc.Application, conteneur: pc.ContainerResource, x:
   modele.addChild(conteneur.instantiateRenderEntity());
   modele.setLocalEulerAngles(0, 180, 0);
   racine.addChild(modele);
-  teindre(modele, teintes, 0.3);
+  teindre(modele, teintes, 0.5);
   modele.addComponent('anim', { activate: true, speed: 0.9 + decalage * 0.2 });
   modele.anim!.assignAnimation('Repos', piste(conteneur, decalage > 0.5 ? 'Idle_Neutral' : 'Idle'));
   modele.anim!.baseLayer!.activeStateCurrentTime = decalage * 1.6; // désynchronise les passants

@@ -126,14 +126,14 @@
   {
     "type": "HDRI",
     "source": "Poly Haven",
-    "id": "kloofendal_48d_partly_cloudy_puresky",
-    "url": "https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky",
+    "id": "kloofendal_38d_partly_cloudy_puresky",
+    "url": "https://polyhaven.com/a/kloofendal_38d_partly_cloudy_puresky",
     "auteurs": {
       "Greg Zaal": "Original",
       "Jarod Guest": "Sky edits"
     },
     "licence": "CC0 1.0",
-    "usage": "ciel et éclairage d'ambiance (IBL)"
+    "usage": "ciel et éclairage d'ambiance (IBL), fin d'après-midi : soleil à 38°"
   },
   {
     "type": "atlas",

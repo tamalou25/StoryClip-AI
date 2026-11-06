@@ -2,7 +2,7 @@
 
 Jeu web 3D stylisé : manifestants contre forces de l'ordre, parties de 5 min sur une place compacte inspirée de la place de la République. Mobile (Android, iPhone) et ordinateur.
 
-**État : incrément 2b (ressources réelles)** — place haussmannienne avec textures photographiques PBR (Poly Haven), candélabres, bancs et statue en modèles 3D réels, platanes en feuillage réel (ambientCG), ciel HDRI qui éclaire la scène, personnage humain animé (Quaternius : repos, marche, course, salut) et passants. Toutes les ressources sont stockées dans `public/ressources/` (aucun lien externe au lancement) et sont CC0 — voir `docs/LICENCES.md`. Pas encore de camps, de bots, d'objectifs ni de réseau.
+**État : incrément 2c (Blender)** — place parisienne de fin d'après-midi : façades haussmanniennes modélisées dans Blender (baies profondes, balcons sur consoles, corniches, lucarnes, devantures et stores bannes), monument au piédestal mouluré et statue en bronze patiné, platanes procéduraux (Blender), dallage composé, mobilier Poly Haven, ciel HDRI qui éclaire la scène, personnage Quaternius lissé dans Blender et animé (repos, marche, course, salut). Ressources stockées dans `public/ressources/` (aucun lien externe au lancement), sources Blender dans `blender/`, licences dans `docs/LICENCES.md`, comparaisons avant/après dans `docs/captures/`. Pas encore de camps, de bots, d'objectifs ni de réseau.
 
 ## Lancer
 
@@ -12,6 +12,17 @@ npm run dev        # http://localhost:5173 (ajouter ?qualite=haute|basse, ?test=
 npm test           # Vitest : simulation, collisions, caméra, validation des intentions
 npm run build      # vérification TypeScript + build de production dans dist/
 npm run test:e2e   # fumée Playwright (après build) : clavier seul + émulation mobile multitouch
+```
+
+Vérifications visuelles et mesures (après `npm run build`) :
+```bash
+node e2e/vues.mjs e2e/captures/vues basse      # captures à cadrage fixe (ajouter « haute » et une liste de vues)
+node e2e/mesures.mjs                           # poids téléchargé, appels de rendu, triangles, mémoire GPU déclarée
+```
+
+Modèles Blender (Blender 4.5 LTS, voir `blender/README.md`) :
+```bash
+/opt/blender/blender -b --factory-startup --python blender/scripts/facade.py
 ```
 
 Ressources tierces (déjà versionnées ; à relancer seulement pour les régénérer) :

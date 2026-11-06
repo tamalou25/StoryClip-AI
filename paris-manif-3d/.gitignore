@@ -3,3 +3,5 @@ dist/
 *.log
 e2e/captures/
 assets-sources/
+blender/sources/*.blend1
+__pycache__/
