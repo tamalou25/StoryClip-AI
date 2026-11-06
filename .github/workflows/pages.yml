@@ -1,0 +1,56 @@
+# Publication du client statique sur GitHub Pages (solo jouable ; multijoueur en indiquant un serveur).
+# Le serveur de jeu Node/WebSocket n'est PAS hébergé par Pages : voir paris-manif-3d/docs/RESEAU.md.
+name: Publication GitHub Pages
+
+on:
+  push:
+    branches: ['claude/dazzling-brahmagupta-c1w0qp', 'claude/integration-nifty-n35t6g']
+    paths: ['paris-manif-3d/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: paris-manif-3d
+
+jobs:
+  construire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.12'
+          cache: npm
+          cache-dependency-path: paris-manif-3d/package-lock.json
+      - run: npm ci
+      - name: Build sous le sous-dossier du dépôt
+        run: npm run build
+        env:
+          PM3D_BASE: /${{ github.event.repository.name }}/
+          VITE_SERVEUR_WS: ${{ vars.PM3D_SERVEUR_WS }}
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: paris-manif-3d/dist
+
+  publier:
+    needs: construire
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploiement.outputs.page_url }}
+    steps:
+      - id: deploiement
+        uses: actions/deploy-pages@v4

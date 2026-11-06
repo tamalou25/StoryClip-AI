@@ -9,6 +9,10 @@ Jeu web 3D stylisé : manifestants contre forces de l'ordre, parties de 5 min su
 
 Décor : place haussmannienne avec textures photographiques PBR (Poly Haven), candélabres, bancs et statue en modèles 3D réels, platanes en feuillage réel (ambientCG), ciel HDRI qui éclaire la scène, personnages humains animés (Quaternius : repos, marche, course, salut) et passants. Toutes les ressources sont stockées dans `public/ressources/` (aucun lien externe au lancement) et sont CC0 — voir `docs/LICENCES.md`. Pas encore de réseau.
 
+## Jouer en ligne
+
+Client publié par GitHub Pages (voir la pull request d'intégration pour le lien vérifié) : solo complet ; le salon privé demande l'adresse d'un serveur de jeu (`docs/RESEAU.md`, « Déploiement »).
+
 ## Lancer
 
 ```bash

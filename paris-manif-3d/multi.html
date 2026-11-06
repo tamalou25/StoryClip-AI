@@ -64,6 +64,11 @@
             <label><input type="radio" name="camp" value="manifestants" checked /><span>Manifestants</span></label>
             <label><input type="radio" name="camp" value="forces" /><span>Forces de l'ordre</span></label>
           </fieldset>
+          <label class="champ">
+            <span>Serveur de jeu (vide = même adresse que cette page)</span>
+            <input id="champ-serveur" type="text" autocomplete="off" spellcheck="false" placeholder="wss://mon-serveur.exemple/ws" />
+          </label>
+          <p id="aide-serveur" class="note" hidden>Cette page est publiée sans serveur de jeu : indiquez l'adresse d'un serveur (voir docs/RESEAU.md) pour jouer à plusieurs.</p>
           <button type="button" id="bouton-creer" class="bouton-menu">Créer un salon privé</button>
           <div class="rejoindre">
             <label class="champ">

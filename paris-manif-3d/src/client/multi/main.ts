@@ -70,7 +70,19 @@ const $ = {
 };
 
 // ——— Réseau ———
-const urlServeur = parametres.get('serveur') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}${CHEMIN_WS}`;
+// Serveur de jeu : ?serveur=, sinon celui saisi dans l'accueil, sinon VITE_SERVEUR_WS (défini au build pour
+// une publication statique), sinon la même origine (relais /ws de Vite ou serveur Node qui sert dist/).
+const serveurBuild = (import.meta.env.VITE_SERVEUR_WS as string | undefined) || '';
+const champServeur = el<HTMLInputElement>('champ-serveur');
+try { champServeur.value = parametres.get('serveur') ?? localStorage.getItem('pm3d-serveur') ?? serveurBuild; } catch { champServeur.value = parametres.get('serveur') ?? serveurBuild; }
+const publicationStatique = location.hostname.endsWith('github.io');
+el('aide-serveur').hidden = !publicationStatique;
+function urlServeur(): string {
+  const saisi = champServeur.value.trim();
+  try { localStorage.setItem('pm3d-serveur', saisi); } catch { /* sans effet */ }
+  if (saisi) return /^wss?:\/\//.test(saisi) ? saisi : `${saisi.startsWith('localhost') || /^\d/.test(saisi) ? 'ws' : 'wss'}://${saisi.replace(/\/+$/, '')}${saisi.includes('/ws') ? '' : CHEMIN_WS}`;
+  return `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}${CHEMIN_WS}`;
+}
 const rtt = Number(parametres.get('latence') ?? 0);
 const gigue = Number(parametres.get('gigue') ?? 0);
 const stockage = {
@@ -88,7 +100,7 @@ const stockage = {
   },
 };
 const client = new ClientReseau({
-  url: urlServeur,
+  get url() { return urlServeur(); },
   regles: REGLES_MANIF,
   stockage,
   prediction: parametres.get('prediction') !== '0',
