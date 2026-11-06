@@ -193,7 +193,7 @@ async function principal() {
   const eB4 = await jusqua(B, (e) => e.phase === 'partie' && e.id === idB && e.local !== null, 45000, 'B revient après rechargement');
   verifier(eB4.id === idB && eB4.phase === 'partie', 'après rechargement, B reprend sa place dans la partie');
   const avant = (await etat(A)).distants[idB];
-  await maintenir(B, 'KeyD', 1200);
+  await maintenir(B, 'KeyD', 3000); // long : à ~1 image/s la simulation ne rattrape qu'une partie du temps réel
   await attendre(800);
   const apres = (await etat(A)).distants[idB];
   verifier(Math.hypot(apres.x - avant.x, apres.z - avant.z) > 2, 'B pilote de nouveau son personnage (vu par A)');

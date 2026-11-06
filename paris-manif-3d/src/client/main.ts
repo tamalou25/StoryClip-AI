@@ -23,7 +23,10 @@ import { avancerTuto, creerTuto, type MemoireTuto } from './tuto';
 
 const ID_JOUEUR = 'joueur';
 const ROTATION_CLAVIER = 2.2; // rad/s
-const PAS_MAX_PAR_IMAGE = 8; // couvre dt ≤ 0,25 s ; au-delà (gel), on abandonne le retard
+// Pas de simulation rattrapés par image : 8 (≤ 0,27 s) en jeu ; en mode test, jusqu'à 1 s par image pour que
+// la partie reste en temps réel même à 1 image/s (rendu logiciel des tests navigateur).
+const PAS_MAX_PAR_IMAGE = new URLSearchParams(location.search).get('test') === '1' ? 30 : 8;
+const DT_IMAGE_MAX = PAS_MAX_PAR_IMAGE / 30;
 
 const parametres = new URLSearchParams(location.search);
 const modeTest = parametres.get('test') === '1';
@@ -262,8 +265,14 @@ function traiterEvenements(evts: Evenement[]): void {
 }
 
 // ——— Boucle ———
-app.on('update', (dtBrut: number) => {
-  const dt = Math.min(dtBrut, 0.25);
+let horlogePrecedente = performance.now();
+app.on('update', (dtMoteur: number) => {
+  // PlayCanvas plafonne son dt à 0,1 s : à moins de 10 images/s, le jeu tournerait au ralenti.
+  // On mesure donc le temps réel écoulé (borné pour ne pas rattraper un gel de plusieurs secondes).
+  const maintenant = performance.now();
+  const dtBrut = Math.max(dtMoteur, (maintenant - horlogePrecedente) / 1000);
+  horlogePrecedente = maintenant;
+  const dt = Math.min(dtBrut, DT_IMAGE_MAX);
   const c = commandes.lire();
 
   if (enJeu) {
