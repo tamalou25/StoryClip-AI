@@ -2,6 +2,7 @@ node_modules/
 dist/
 *.log
 e2e/captures/
+dist-serveur/
 assets-sources/
 blender/sources/*.blend1
 __pycache__/

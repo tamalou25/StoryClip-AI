@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#1b1f24" />
+    <title>Paris Manif 3D — Salon privé</title>
+    <link rel="stylesheet" href="/src/client/style.css" />
+    <link rel="stylesheet" href="/src/client/multi/multi.css" />
+  </head>
+  <body>
+    <canvas id="scene" aria-label="Vue du jeu"></canvas>
+    <div id="etiquettes" class="etiquettes" aria-hidden="true"></div>
+
+    <!-- Couche tactile (identique au mode solo). -->
+    <div id="commandes" class="commandes" aria-hidden="true">
+      <div class="joystick-base" hidden><div class="joystick-bouton"></div></div>
+      <div class="boutons">
+        <button type="button" tabindex="-1" class="bouton-jeu" data-commande="recentrer" aria-label="Recentrer la caméra">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5a7 7 0 1 1-6.6 4.7" /><path d="M5 4v5h5" /></svg>
+        </button>
+        <button type="button" tabindex="-1" class="bouton-jeu bouton-principal" data-commande="action" aria-label="Action">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20V5" /><path d="M7 9l5-5 5 5" /></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="hud" id="hud" hidden>
+      <button type="button" id="bouton-menu-jeu" class="bouton-hud" aria-label="Menu (Échap)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6v12M15 6v12" /></svg>
+      </button>
+      <div class="tableau-score" role="status" aria-live="off">
+        <span class="score manifestants"><span class="pastille"></span><span id="score-m">0</span></span>
+        <span id="minuteur" class="minuteur">5:00</span>
+        <span class="score forces"><span id="score-f">0</span><span class="pastille"></span></span>
+      </div>
+      <ol id="objectifs" class="objectifs" aria-label="Objectifs"></ol>
+      <span id="reseau" class="info-hud reseau" aria-hidden="true"></span>
+    </div>
+
+    <p id="bandeau-reseau" class="bandeau bandeau-reseau" role="status" aria-live="polite" hidden></p>
+    <p id="compte" class="compte" aria-live="assertive" hidden></p>
+
+    <div id="menu" class="menu" role="dialog" aria-modal="true" aria-labelledby="titre-multi">
+      <div class="panneau panneau-multi">
+        <p class="surtitre">Salon privé · 2 à 4 joueurs</p>
+        <h1 id="titre-multi">Paris <span>Manif</span></h1>
+
+        <!-- Accueil : créer ou rejoindre -->
+        <section id="ecran-accueil" class="ecran">
+          <label class="champ">
+            <span>Votre nom</span>
+            <input id="champ-nom" type="text" maxlength="16" autocomplete="nickname" spellcheck="false" placeholder="Joueur" />
+          </label>
+          <fieldset class="choix-camp">
+            <legend>Camp</legend>
+            <label><input type="radio" name="camp" value="manifestants" checked /><span>Manifestants</span></label>
+            <label><input type="radio" name="camp" value="forces" /><span>Forces de l'ordre</span></label>
+          </fieldset>
+          <button type="button" id="bouton-creer" class="bouton-menu">Créer un salon privé</button>
+          <div class="rejoindre">
+            <label class="champ">
+              <span>Code du salon</span>
+              <input id="champ-code" type="text" maxlength="7" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCDE" inputmode="text" />
+            </label>
+            <button type="button" id="bouton-rejoindre" class="bouton-menu secondaire">Rejoindre</button>
+          </div>
+          <p class="note"><a href="./">← Entraînement solo</a></p>
+        </section>
+
+        <!-- Salon : participants, préparation -->
+        <section id="ecran-salon" class="ecran" hidden>
+          <div class="code-salon">
+            <span>Code</span>
+            <strong id="code-salon" aria-live="polite">—</strong>
+            <button type="button" id="bouton-copier" class="bouton-mini">Copier le lien</button>
+          </div>
+          <ul id="liste-joueurs" class="liste-joueurs" aria-label="Participants"></ul>
+          <div class="reglages">
+            <button type="button" id="bouton-camp" class="bouton-menu secondaire">Changer de camp</button>
+            <button type="button" id="bouton-pret" class="bouton-menu secondaire" aria-pressed="false">Je suis prêt</button>
+          </div>
+          <button type="button" id="bouton-lancer" class="bouton-menu" hidden>Lancer la partie</button>
+          <p id="attente" class="etat-attente" aria-live="polite"></p>
+          <button type="button" id="bouton-quitter" class="bouton-menu secondaire">Quitter le salon</button>
+        </section>
+
+        <!-- Résultats et revanche -->
+        <section id="ecran-resultats" class="ecran" hidden>
+          <h2 id="titre-resultat" class="titre-resultat">—</h2>
+          <p id="scores-resultat" class="scores-resultat"></p>
+          <table class="table-resultats">
+            <thead><tr><th scope="col">Joueur</th><th scope="col">Camp</th><th scope="col">Points</th></tr></thead>
+            <tbody id="lignes-resultat"></tbody>
+          </table>
+          <div class="reglages">
+            <button type="button" id="bouton-camp-revanche" class="bouton-menu secondaire">Changer de camp</button>
+            <button type="button" id="bouton-revanche" class="bouton-menu" aria-pressed="false">Revanche</button>
+          </div>
+          <p id="attente-revanche" class="etat-attente" aria-live="polite"></p>
+          <button type="button" id="bouton-quitter-resultats" class="bouton-menu secondaire">Quitter le salon</button>
+        </section>
+
+        <!-- Menu pendant la partie (la partie continue : pas de pause en ligne) -->
+        <section id="ecran-pause" class="ecran" hidden>
+          <p class="sous-titre">La partie continue pendant que ce menu est ouvert.</p>
+          <button type="button" id="bouton-reprendre" class="bouton-menu">Reprendre</button>
+          <button type="button" id="bouton-quitter-partie" class="bouton-menu secondaire">Quitter la partie</button>
+        </section>
+
+        <p id="erreur" class="erreur" role="alert" hidden></p>
+        <p class="note">Univers fictif. Aucune personne, unité ni insigne réels.</p>
+      </div>
+    </div>
+
+    <script type="module" src="/src/client/multi/main.ts"></script>
+  </body>
+</html>

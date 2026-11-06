@@ -7,10 +7,10 @@ Rythme : 5–10 h/semaine. Heures = travail humain (pilotage, essais, relecture)
 | 1 | Audit et décisions | 4–6 | ✅ fait |
 | 2 | Personnage, caméra, collisions, carte en volumes | 10–16 | ✅ base faite (même session) |
 | 3 | Commandes tactiles/clavier, menus, écrans | 12–20 | 🟡 commandes + pause faites ; menus camp/résultats à faire |
-| 4 | Essai réseau : 2 clients, serveur autoritaire (Colyseus) | 20–30 | ⬜ |
+| 4 | Essai réseau : 2 clients, serveur autoritaire (`ws`, voir ADR 0002) | 20–30 | ✅ fait (session réseau, 05/11/2026) |
 | 5 | Partie complète 5 min, deux camps, victoire, revanche | 20–30 | ⬜ |
 | 6 | 8 bots, navigation, déblocage | 20–35 | ⬜ |
-| 7 | Salons privés, objectifs synchronisés, départs, reconnexion | 20–35 | ⬜ |
+| 7 | Salons privés, objectifs synchronisés, départs, reconnexion | 20–35 | 🟡 fait avec des règles provisoires ; raccordement aux règles complètes à faire (voir `docs/RESEAU.md`) |
 | 8 | Gaz fictif et cordon (contre-jeu, sortie) | 12–20 | ⬜ |
 | 9 | Décor parisien, animations, optimisation, tests réels | 30–48 | ⬜ |
 | | **Total** | **150–240** (190–300 avec marge) | |
@@ -50,6 +50,11 @@ Menu complet au clavier et au toucher : accueil → choix du camp → partie (mi
 | Appels de dessin mesurés (Chromium headless) | 135 | 598 |
 
 Les i/s ne sont pas mesurables ici (rendu logiciel) : à mesurer sur un vrai téléphone en priorité.
+
+## Incréments 4 et 7 — multijoueur (05/11/2026)
+- Salons privés 2–4 joueurs à code court, serveur autoritaire 30 Hz, prédiction + réconciliation (0 correction mesurée sous 150–190 ms), interpolation des distants, reconnexion, revanche, bots de complément : `docs/RESEAU.md`.
+- Testé : 99 tests Vitest (dont 5 fichiers multi-clients sur vrais sockets), E2E à trois navigateurs, image Docker. Non testé : vrais téléphones, réseau mobile réel, hébergement public.
+- Reste (≈ 8–14 h) : adaptateur vers les règles complètes de la session gameplay (`regles-manif.ts`), bouton spécial et HUD souffle/gaz en ligne, déploiement TLS chez un hébergeur, essais à 4 sur téléphones.
 
 ## Incrément 2c — décor Blender (05–06/11/2026)
 
