@@ -481,6 +481,8 @@ if (modeTest) {
         monde = etape(monde, {}, carte);
         traiterEvenements(monde.evenements);
       }
+      // Le HUD reflète aussitôt l'état avancé (sans attendre l'image suivante, rare en rendu logiciel).
+      if (partieActive) rendre(0);
     },
   };
 }
