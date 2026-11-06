@@ -102,7 +102,7 @@ async function manifestantsClavier(navigateur) {
 
   // Spécial : slogan (appui bref) → recharge en cours.
   await page.keyboard.press('KeyF');
-  e = await jusqua(page, (s) => s.recharge > 0, 2000);
+  e = await jusqua(page, (s) => s.recharge > 0, 8000); // délai de sondage : jusqu'à 2 s entre deux images en rendu logiciel
   verifier(e.recharge > 0, 'F lance un slogan (appui bref retenu même à bas débit d’images)', `recharge=${e.recharge.toFixed(1)}`);
 
   // Entrées répétées : rafale de touches sans erreur ni état incohérent.
